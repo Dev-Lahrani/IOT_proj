@@ -1,0 +1,78 @@
+# ============================================
+# Driver Drowsiness Detection - Configuration
+# ============================================
+
+camera:
+  # Options: "phone" | "esp32" | "usb" | "picam"
+  source: "phone"
+
+  # Stream URLs for each camera type
+  phone_url: "http://192.168.1.100:8080/video"
+  esp32_url: "http://192.168.1.101/stream"
+  usb_device: 0
+  picam_index: 0
+
+  # Fallback: try next source if primary fails
+  fallback_enabled: true
+
+detection:
+  # Eye Aspect Ratio threshold (below = eyes closed)
+  ear_threshold: 0.22
+
+  # Mouth Aspect Ratio threshold (above = yawning)
+  mar_threshold: 0.65
+
+  # Consecutive frames before triggering alert
+  ear_consecutive_frames: 20
+  mar_consecutive_frames: 15
+
+  # Frame skip (process every Nth frame for performance)
+  frame_skip: 2
+
+  # Face detection model: "hog" (faster) or "cnn" (more accurate)
+  face_detection_model: "hog"
+
+hardware:
+  # GPIO pins (BCM numbering)
+  buzzer_pin: 17
+  vibration_pin: 27
+  led_pin: 22
+
+  # Alert durations (seconds)
+  buzzer_duration: 0.5
+  vibration_duration: 1.0
+  led_blink_count: 5
+
+  # Enable/disable each alert device
+  buzzer_enabled: true
+  vibration_enabled: true
+  led_enabled: true
+
+gps:
+  # Serial port for Neo-6M GPS module
+  port: "/dev/ttyAMA0"
+  baudrate: 9600
+
+  # Fallback GPS coordinates (used when GPS unavailable)
+  fallback_lat: 18.5204
+  fallback_lon: 73.8567
+
+dashboard:
+  # Flask server settings
+  host: "0.0.0.0"
+  port: 5000
+  debug: false
+
+  # Data push interval (seconds)
+  push_interval: 2.0
+
+  # Use MQTT instead of HTTP (false = HTTP)
+  use_mqtt: false
+  mqtt_broker: "localhost"
+  mqtt_port: 1883
+  mqtt_topic: "vehicle/driver/status"
+
+alert_cooldown:
+  # Minimum seconds between repeated same-type alerts
+  drowsy_cooldown: 10
+  yawn_cooldown: 15

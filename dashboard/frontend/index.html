@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Monitoring Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚗 Driver Drowsiness Monitoring</h1>
+            <div class="connection-status">
+                <span id="connection-dot"></span>
+                <span id="connection-text">Connecting...</span>
+            </div>
+        </header>
+
+        <main class="dashboard-grid">
+            <section class="card status-panel">
+                <h2>Driver Status</h2>
+                <div class="status-display">
+                    <div class="status-badge" id="status-badge">NO DATA</div>
+                    <div class="metrics">
+                        <div class="metric">
+                            <span class="label">EAR</span>
+                            <span class="value" id="ear-value">--</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">MAR</span>
+                            <span class="value" id="mar-value">--</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Timestamp</span>
+                            <span class="value" id="timestamp-value">--</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card location-panel">
+                <h2>Vehicle Location</h2>
+                <div id="map"></div>
+                <div class="coordinates">
+                    <span>Lat: <strong id="lat-value">--</strong></span>
+                    <span>Lon: <strong id="lon-value">--</strong></span>
+                </div>
+            </section>
+
+            <section class="card alerts-panel">
+                <h2>Alert History</h2>
+                <div class="alerts-table-wrapper">
+                    <table class="alerts-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Event</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alerts-body">
+                            <tr><td colspan="2">No alerts yet</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="card stats-panel">
+                <h2>Statistics</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-value" id="total-records">0</span>
+                        <span class="stat-label">Total Records</span>
+                    </div>
+                    <div class="stat-item drowsy">
+                        <span class="stat-value" id="drowsy-count">0</span>
+                        <span class="stat-label">Drowsy Alerts</span>
+                    </div>
+                    <div class="stat-item yawn">
+                        <span class="stat-value" id="yawn-count">0</span>
+                        <span class="stat-label">Yawn Alerts</span>
+                    </div>
+                </div>
+                <button class="clear-btn" id="clear-btn">Clear Data</button>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
