@@ -4,11 +4,11 @@
 
 camera:
   # Options: "phone" | "esp32" | "usb" | "picam"
-  source: "phone"
+  source: "esp32"
 
   # Stream URLs for each camera type
   phone_url: "http://192.168.1.100:8080/video"
-  esp32_url: "http://192.168.1.101/stream"
+  esp32_url: "http://10.208.76.7/stream"
   usb_device: 0
   picam_index: 0
 
