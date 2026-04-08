@@ -28,7 +28,7 @@ mv shape_predictor_68_face_landmarks.dat pi/
 # 4. Run
 bash start.sh
 
-# 5. Open http://localhost:5000
+# 5. Open http://<pi-ip>:5000 from any device on the same network
 ```
 
 ## Camera Setup

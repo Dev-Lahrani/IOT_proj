@@ -27,6 +27,11 @@ CAMERA_SOURCE=$(grep "source:" pi/config.yaml | head -1 | awk '{print $2}')
 echo "Camera source: $CAMERA_SOURCE"
 echo ""
 
+PI_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+if [ -z "$PI_IP" ]; then
+    PI_IP="localhost"
+fi
+
 # Function to cleanup on exit
 cleanup() {
     echo "Shutting down..."
@@ -56,7 +61,7 @@ cd ..
 echo ""
 echo "=========================================="
 echo "System running!"
-echo "Dashboard: http://localhost:5000"
+echo "Dashboard: http://$PI_IP:5000"
 echo "=========================================="
 echo "Press Ctrl+C to stop"
 

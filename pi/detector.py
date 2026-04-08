@@ -5,6 +5,7 @@ import yaml
 import time
 import signal
 import sys
+import os
 from scipy.spatial import distance as dist
 from hardware import HardwareAlerts
 from gps import GPSReader
@@ -86,6 +87,7 @@ def main():
     gps_config = config["gps"]
     dash_config = config["dashboard"]
     cooldown_config = config["alert_cooldown"]
+    show_preview = bool(os.environ.get("DISPLAY"))
 
     hardware = HardwareAlerts(hw_config)
     gps = GPSReader(gps_config)
@@ -141,12 +143,12 @@ def main():
     signal.signal(signal.SIGTERM, shutdown)
 
     while True:
-        frame_count += 1
-        if frame_count % det["frame_skip"] != 0:
-            continue
-
         ret, frame = cap.read()
         if not ret:
+            continue
+
+        frame_count += 1
+        if frame_count % det["frame_skip"] != 0:
             continue
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -262,15 +264,17 @@ def main():
             }
         )
 
-        cv2.imshow("Driver Monitoring", frame)
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
+        if show_preview:
+            cv2.imshow("Driver Monitoring", frame)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
 
     hardware.cleanup()
     gps.stop()
     publisher.stop()
     cap.release()
-    cv2.destroyAllWindows()
+    if show_preview:
+        cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":

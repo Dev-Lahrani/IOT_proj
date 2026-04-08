@@ -9,7 +9,10 @@ class DataPublisher:
     """Publishes detection data to the dashboard backend."""
 
     def __init__(self, config):
-        self.dashboard_url = f"http://127.0.0.1:{config['port']}/update"
+        host = config.get("host", "127.0.0.1")
+        if host in {"0.0.0.0", "::"}:
+            host = "127.0.0.1"
+        self.dashboard_url = f"http://{host}:{config['port']}/update"
         self.use_mqtt = config["use_mqtt"]
         self.push_interval = config["push_interval"]
 

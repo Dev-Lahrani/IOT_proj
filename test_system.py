@@ -7,7 +7,9 @@ Run this on the Raspberry Pi before deployment.
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "pi"))
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+PI_DIR = os.path.join(PROJECT_ROOT, "pi")
+sys.path.insert(0, PI_DIR)
 
 
 def test_imports():
@@ -76,9 +78,7 @@ def test_dlib_model():
     import dlib
     import os
 
-    model_path = os.path.join(
-        os.path.dirname(__file__), "shape_predictor_68_face_landmarks.dat"
-    )
+    model_path = os.path.join(PI_DIR, "shape_predictor_68_face_landmarks.dat")
     if os.path.exists(model_path):
         print(f"  ✓ Model file exists")
         try:
@@ -120,9 +120,9 @@ def test_hardware():
     print("\nTesting hardware module...")
     try:
         import yaml
-        from pi import hardware
+        import hardware
 
-        config_path = os.path.join(os.path.dirname(__file__), "pi", "config.yaml")
+        config_path = os.path.join(PI_DIR, "config.yaml")
         with open(config_path) as f:
             config = yaml.safe_load(f)["hardware"]
 
@@ -139,9 +139,9 @@ def test_gps():
     print("\nTesting GPS module...")
     try:
         import yaml
-        from pi import gps
+        import gps
 
-        config_path = os.path.join(os.path.dirname(__file__), "pi", "config.yaml")
+        config_path = os.path.join(PI_DIR, "config.yaml")
         with open(config_path) as f:
             config = yaml.safe_load(f)["gps"]
 
@@ -160,9 +160,9 @@ def test_publisher():
     print("\nTesting publisher module...")
     try:
         import yaml
-        from pi import publisher
+        import publisher
 
-        config_path = os.path.join(os.path.dirname(__file__), "pi", "config.yaml")
+        config_path = os.path.join(PI_DIR, "config.yaml")
         with open(config_path) as f:
             config = yaml.safe_load(f)["dashboard"]
 

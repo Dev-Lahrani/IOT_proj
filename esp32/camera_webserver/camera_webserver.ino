@@ -34,9 +34,9 @@
  */
 
 #include "esp_camera.h"
+#include "img_converters.h"
 #include <WiFi.h>
 #include <esp_http_server.h>
-#include <esp_timer.h>
 
 // ============================================
 // WiFi Configuration - UPDATE THESE
@@ -98,32 +98,55 @@ static esp_err_t index_handler(httpd_req_t *req) {
   return ESP_OK;
 }
 
-typedef struct {
-  httpd_handle_t stream_httpd;
-  size_t         jpg_buf_len;
-  uint8_t       *jpg_buf;
-  camera_fb_t    *fb;
-} streaming_state_t;
+static const char *STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=frame";
+static const char *STREAM_BOUNDARY = "\r\n--frame\r\n";
+static const char *STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
 
 static esp_err_t stream_handler(httpd_req_t *req) {
-  camera_fb_t *fb = esp_camera_fb_get();
-  if (!fb) {
-    httpd_resp_send_500(req);
-    return ESP_FAIL;
-  }
-
-  httpd_resp_set_type(req, "multipart/x-mixed-replace; boundary=frame");
+  httpd_resp_set_type(req, STREAM_CONTENT_TYPE);
   httpd_resp_set_hdr(req, "X-Framerate", "15");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
   while (true) {
-    if (fb->format != PIXFORMAT_JPEG) {
-      continue;
+    camera_fb_t *fb = esp_camera_fb_get();
+    if (!fb) {
+      return ESP_FAIL;
     }
 
-    httpd_resp_send_chunk(req, (const char *)fb->buf, fb->len);
-    
-    fb = esp_camera_fb_get();
-    if (!fb) break;
+    esp_err_t res = ESP_OK;
+    uint8_t *jpg_buf = fb->buf;
+    size_t jpg_buf_len = fb->len;
+    bool converted = false;
+
+    if (fb->format != PIXFORMAT_JPEG) {
+      converted = frame2jpg(fb, 80, &jpg_buf, &jpg_buf_len);
+      esp_camera_fb_return(fb);
+      fb = NULL;
+      if (!converted) {
+        return ESP_FAIL;
+      }
+    }
+
+    char part_buf[64];
+    size_t part_len = snprintf(part_buf, sizeof(part_buf), STREAM_PART, jpg_buf_len);
+
+    res = httpd_resp_send_chunk(req, STREAM_BOUNDARY, strlen(STREAM_BOUNDARY));
+    if (res == ESP_OK) {
+      res = httpd_resp_send_chunk(req, part_buf, part_len);
+    }
+    if (res == ESP_OK) {
+      res = httpd_resp_send_chunk(req, (const char *)jpg_buf, jpg_buf_len);
+    }
+
+    if (fb) {
+      esp_camera_fb_return(fb);
+    } else if (converted) {
+      free(jpg_buf);
+    }
+
+    if (res != ESP_OK) {
+      break;
+    }
   }
 
   return ESP_FAIL;
@@ -162,7 +185,7 @@ void startCameraServer() {
 }
 
 camera_config_t getCameraConfig() {
-  camera_config_t config;
+  camera_config_t config = {};
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer   = LEDC_TIMER_0;
   config.pin_d0       = Y2_GPIO_NUM;
@@ -182,6 +205,7 @@ camera_config_t getCameraConfig() {
   config.pin_pwdn    = PWDN_GPIO_NUM;
   config.pin_reset   = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;
+  config.pixel_format = PIXFORMAT_JPEG;
   config.frame_size   = FRAMESIZE_VGA;  // 640x480 - good for detection
   config.jpeg_quality = 12;              // Lower = better quality
   config.fb_count     = 2;

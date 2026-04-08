@@ -51,7 +51,11 @@ class HardwareAlerts:
         if not self._alert_lock.acquire(blocking=False):
             return
 
-        t = threading.Thread(target=self._run_alerts, daemon=True)
+        t = threading.Thread(
+            target=self._run_alerts,
+            args=(alert_type,),
+            daemon=True,
+        )
         t.start()
 
     def _run_alerts(self, alert_type="drowsy"):

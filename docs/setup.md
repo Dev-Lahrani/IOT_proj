@@ -183,7 +183,7 @@ python3 app.py
 ```
 
 Dashboard will be available at:
-- **Local:** `http://localhost:5000`
+- **Local:** `http://127.0.0.1:5000`
 - **Network:** `http://<pi-ip>:5000`
 
 ### Step 2: Start the Detection Program
