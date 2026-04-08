@@ -1,69 +1,30 @@
 import cv2
-import dlib
-import numpy as np
 import yaml
 import time
 import signal
 import sys
 import os
-from scipy.spatial import distance as dist
+
 from hardware import HardwareAlerts
 from gps import GPSReader
 from publisher import DataPublisher
-
-
-FACIAL_LANDMARKS_68_IDXS = {
-    "mouth": (48, 68),
-    "inner_mouth": (60, 68),
-    "right_eyebrow": (17, 22),
-    "left_eyebrow": (22, 27),
-    "right_eye": (36, 42),
-    "left_eye": (42, 48),
-    "nose": (27, 35),
-    "jaw": (0, 17),
-}
-
-
-def eye_aspect_ratio(eye):
-    A = dist.euclidean(eye[1], eye[5])
-    B = dist.euclidean(eye[2], eye[4])
-    C = dist.euclidean(eye[0], eye[3])
-    return (A + B) / (2.0 * C)
-
-
-def mouth_aspect_ratio(mouth):
-    A = dist.euclidean(mouth[2], mouth[10])
-    B = dist.euclidean(mouth[4], mouth[8])
-    C = dist.euclidean(mouth[0], mouth[6])
-    return (A + B) / (2.0 * C)
-
-
-def shape_to_np(shape, dtype="int"):
-    coords = np.zeros((68, 2), dtype=dtype)
-    for i in range(68):
-        coords[i] = (shape.part(i).x, shape.part(i).y)
-    return coords
 
 
 def get_camera_url(config):
     source = config["camera"]["source"]
     if source == "phone":
         return config["camera"]["phone_url"]
-    elif source == "esp32":
+    if source == "esp32":
         return config["camera"]["esp32_url"]
-    elif source == "usb":
+    if source == "usb":
         return config["camera"]["usb_device"]
-    elif source == "picam":
+    if source == "picam":
         return config["camera"]["picam_index"]
-    return config["camera"]["phone_url"]
+    return config["camera"]["esp32_url"]
 
 
 def open_camera(source, timeout=10):
-    if isinstance(source, str):
-        cap = cv2.VideoCapture(source)
-    else:
-        cap = cv2.VideoCapture(source)
-
+    cap = cv2.VideoCapture(source)
     cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -76,6 +37,17 @@ def open_camera(source, timeout=10):
         time.sleep(0.5)
 
     return None
+
+
+def load_cascades():
+    base = cv2.data.haarcascades
+    face = cv2.CascadeClassifier(base + "haarcascade_frontalface_default.xml")
+    eye = cv2.CascadeClassifier(base + "haarcascade_eye.xml")
+
+    if face.empty() or eye.empty():
+        raise RuntimeError("Failed to load OpenCV Haar cascades")
+
+    return face, eye
 
 
 def main():
@@ -94,32 +66,27 @@ def main():
     publisher = DataPublisher(dash_config)
     publisher.start()
 
-    detector = dlib.get_frontal_face_detector()
-    predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+    face_cascade, eye_cascade = load_cascades()
 
-    (l_start, l_end) = FACIAL_LANDMARKS_68_IDXS["left_eye"]
-    (r_start, r_end) = FACIAL_LANDMARKS_68_IDXS["right_eye"]
-    (m_start, m_end) = FACIAL_LANDMARKS_68_IDXS["mouth"]
-
-    ear_counter = 0
-    mar_counter = 0
+    eye_closed_counter = 0
     status = "ALERT"
     last_drowsy_alert = 0
-    last_yawn_alert = 0
     frame_count = 0
+    closed_frames_threshold = max(5, det["ear_consecutive_frames"] // 2)
 
     camera_source = get_camera_url(config)
     cap = open_camera(camera_source)
 
-    if cap is None:
-        if config["camera"].get("fallback_enabled") and isinstance(camera_source, str):
-            print("[Camera] Primary source failed, trying fallback...")
-            alt = (
-                config["camera"]["esp32_url"]
-                if camera_source == config["camera"]["phone_url"]
-                else config["camera"]["phone_url"]
-            )
-            cap = open_camera(alt)
+    if cap is None and config["camera"].get("fallback_enabled") and isinstance(
+        camera_source, str
+    ):
+        print("[Camera] Primary source failed, trying fallback...")
+        alt = (
+            config["camera"]["esp32_url"]
+            if camera_source == config["camera"]["phone_url"]
+            else config["camera"]["phone_url"]
+        )
+        cap = open_camera(alt)
 
     if cap is None:
         print("[Camera] No camera source available. Exiting.")
@@ -128,7 +95,7 @@ def main():
         publisher.stop()
         sys.exit(1)
 
-    print("[System] All modules initialized. Monitoring driver...")
+    print("[System] OpenCV detector initialized. Monitoring driver...")
 
     def shutdown(sig, frame):
         print("\n[System] Shutting down...")
@@ -136,7 +103,8 @@ def main():
         gps.stop()
         publisher.stop()
         cap.release()
-        cv2.destroyAllWindows()
+        if show_preview:
+            cv2.destroyAllWindows()
         sys.exit(0)
 
     signal.signal(signal.SIGINT, shutdown)
@@ -152,78 +120,63 @@ def main():
             continue
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = detector(gray, 0)
+        faces = face_cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.2,
+            minNeighbors=5,
+            minSize=(80, 80),
+        )
 
+        status = "ALERT"
         current_ear = 0.0
         current_mar = 0.0
-        status = "ALERT"
+        eyes_detected = 0
 
-        for face in faces:
-            shape = predictor(gray, face)
-            shape = shape_to_np(shape)
+        if len(faces) > 0:
+            x, y, w, h = max(faces, key=lambda face: face[2] * face[3])
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
-            left_eye = shape[l_start:l_end]
-            right_eye = shape[r_start:r_end]
-            mouth = shape[m_start:m_end]
+            face_roi_gray = gray[y : y + h, x : x + w]
+            face_roi_color = frame[y : y + h, x : x + w]
 
-            current_ear = (
-                eye_aspect_ratio(left_eye) + eye_aspect_ratio(right_eye)
-            ) / 2.0
-            current_mar = mouth_aspect_ratio(mouth)
+            eyes = eye_cascade.detectMultiScale(
+                face_roi_gray,
+                scaleFactor=1.1,
+                minNeighbors=6,
+                minSize=(20, 20),
+            )
 
-            if current_ear < det["ear_threshold"]:
-                ear_counter += 1
-                if ear_counter > det["ear_consecutive_frames"]:
-                    now = time.time()
-                    if now - last_drowsy_alert > cooldown_config["drowsy_cooldown"]:
-                        status = "DROWSY"
-                        hardware.trigger("drowsy")
-                        last_drowsy_alert = now
-            else:
-                ear_counter = 0
+            eyes_detected = len(eyes)
 
-            if current_mar > det["mar_threshold"]:
-                mar_counter += 1
-                if mar_counter > det["mar_consecutive_frames"]:
-                    now = time.time()
-                    if now - last_yawn_alert > cooldown_config["yawn_cooldown"]:
-                        status = "YAWNING"
-                        hardware.trigger("yawn")
-                        last_yawn_alert = now
-            else:
-                mar_counter = 0
-
-            for start, end in [
-                (l_start, l_end),
-                (r_start, r_end),
-                (m_start, m_end),
-            ]:
-                pts = shape[start:end]
-                cv2.polylines(frame, [pts], True, (0, 255, 0), 1)
-
-            (x, y, w, h) = cv2.boundingRect(
-                np.array(
-                    [
-                        shape[l_start:l_end][0],
-                        shape[r_start:r_end][-1],
-                        shape[m_start:m_end][2],
-                    ]
+            for ex, ey, ew, eh in eyes[:2]:
+                cv2.rectangle(
+                    face_roi_color,
+                    (ex, ey),
+                    (ex + ew, ey + eh),
+                    (0, 255, 0),
+                    2,
                 )
-            )
-            cv2.rectangle(
-                frame,
-                (face.left(), face.top()),
-                (face.right(), face.bottom()),
-                (255, 0, 0),
-                2,
-            )
+
+            if eyes_detected == 0:
+                eye_closed_counter += 1
+            else:
+                eye_closed_counter = 0
+
+            if eye_closed_counter >= closed_frames_threshold:
+                now = time.time()
+                if now - last_drowsy_alert > cooldown_config["drowsy_cooldown"]:
+                    hardware.trigger("drowsy")
+                    last_drowsy_alert = now
+                status = "DROWSY"
+        else:
+            eye_closed_counter = 0
 
         color_map = {
             "ALERT": (0, 255, 0),
             "DROWSY": (0, 0, 255),
-            "YAWNING": (0, 165, 255),
         }
         color = color_map.get(status, (255, 255, 255))
+
         cv2.putText(
             frame,
             f"Status: {status}",
@@ -235,7 +188,7 @@ def main():
         )
         cv2.putText(
             frame,
-            f"EAR: {current_ear:.3f}",
+            f"Eyes Detected: {eyes_detected}",
             (10, 60),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.6,
@@ -244,7 +197,7 @@ def main():
         )
         cv2.putText(
             frame,
-            f"MAR: {current_mar:.3f}",
+            f"Closed Count: {eye_closed_counter}",
             (10, 90),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.6,

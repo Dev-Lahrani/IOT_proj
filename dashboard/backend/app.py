@@ -73,4 +73,10 @@ if __name__ == "__main__":
     host = config["dashboard"]["host"]
     port = config["dashboard"]["port"]
     debug = config["dashboard"]["debug"]
-    socketio.run(app, host=host, port=port, debug=debug)
+    socketio.run(
+        app,
+        host=host,
+        port=port,
+        debug=debug,
+        allow_unsafe_werkzeug=True,
+    )
