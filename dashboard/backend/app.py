@@ -3,6 +3,7 @@ from flask_socketio import SocketIO
 from database import Database
 import yaml
 import os
+from urllib.parse import urlparse
 
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.dirname(BACKEND_DIR))
@@ -21,6 +22,54 @@ with open(CONFIG_PATH, "r") as f:
     config = yaml.safe_load(f)
 
 
+def get_camera_stream_info():
+    def normalize_stream_url(url, default_path):
+        if not isinstance(url, str):
+            return None
+        cleaned = url.strip()
+        if not cleaned:
+            return None
+
+        if "://" not in cleaned:
+            cleaned = f"http://{cleaned.lstrip('/')}"
+
+        parsed = urlparse(cleaned)
+        if parsed.scheme in {"http", "https"} and parsed.path in {"", "/"}:
+            return cleaned.rstrip("/") + default_path
+        return cleaned
+
+    camera = config.get("camera", {})
+    source = camera.get("source")
+
+    if source == "esp32":
+        url = normalize_stream_url(camera.get("esp32_url"), "/stream")
+        if url:
+            return {"enabled": True, "source": source, "url": url}
+        return {
+            "enabled": False,
+            "source": source,
+            "url": None,
+            "message": "Set camera.esp32_url in pi/config.yaml.",
+        }
+    if source == "phone":
+        url = normalize_stream_url(camera.get("phone_url"), "/video")
+        if url:
+            return {"enabled": True, "source": source, "url": url}
+        return {
+            "enabled": False,
+            "source": source,
+            "url": None,
+            "message": "Set camera.phone_url in pi/config.yaml.",
+        }
+
+    return {
+        "enabled": False,
+        "source": source,
+        "url": None,
+        "message": "Dashboard preview supports network streams (esp32/phone) only.",
+    }
+
+
 @app.route("/")
 def index():
     return send_from_directory(FRONTEND_DIR, "index.html")
@@ -33,7 +82,10 @@ def frontend_assets(asset_path):
 
 @app.route("/update", methods=["POST"])
 def update_data():
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
+
     db.insert_driver_data(data)
     socketio.emit("driver_update", data)
     return jsonify({"success": True})
@@ -58,6 +110,11 @@ def get_stats():
     return jsonify(stats)
 
 
+@app.route("/camera", methods=["GET"])
+def get_camera():
+    return jsonify(get_camera_stream_info())
+
+
 @app.route("/clear", methods=["POST"])
 def clear_data():
     import sqlite3
@@ -69,6 +126,8 @@ def clear_data():
     conn.commit()
     conn.close()
     return jsonify({"success": True})
+
+
 if __name__ == "__main__":
     host = config["dashboard"]["host"]
     port = config["dashboard"]["port"]

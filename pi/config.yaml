@@ -13,7 +13,7 @@ camera:
   picam_index: 0
 
   # Fallback: try next source if primary fails
-  fallback_enabled: true
+  fallback_enabled: false
 
 detection:
   # Eye Aspect Ratio threshold (below = eyes closed)
@@ -50,7 +50,7 @@ hardware:
 
 gps:
   # Serial port for Neo-6M GPS module
-  port: "/dev/ttyAMA0"
+  port: "/dev/ttyS0"
   baudrate: 9600
 
   # Fallback GPS coordinates (used when GPS unavailable)

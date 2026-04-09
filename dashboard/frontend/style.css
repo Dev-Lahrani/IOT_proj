@@ -157,6 +157,35 @@ header h1 {
     grid-column: span 1;
 }
 
+.camera-panel {
+    grid-column: span 1;
+}
+
+#camera-feed-status {
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: #aaa;
+}
+
+#camera-feed-status.error {
+    color: #ff8888;
+}
+
+.camera-feed-wrapper {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+}
+
+#camera-feed {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+}
+
 #map {
     height: 200px;
     border-radius: 8px;
@@ -213,6 +242,23 @@ header h1 {
 .alerts-table tr td:first-child {
     color: #888;
     font-family: monospace;
+}
+
+.alert-tag {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.alert-tag.drowsy {
+    background: rgba(255, 68, 68, 0.2);
+    color: #ff4444;
+}
+
+.alert-tag.yawning {
+    background: rgba(255, 165, 0, 0.2);
+    color: #ffa500;
 }
 
 .stats-panel {

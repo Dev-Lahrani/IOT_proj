@@ -6,6 +6,7 @@ Run this on the Raspberry Pi before deployment.
 
 import sys
 import os
+import importlib
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 PI_DIR = os.path.join(PROJECT_ROOT, "pi")
@@ -14,84 +15,67 @@ sys.path.insert(0, PI_DIR)
 
 def test_imports():
     print("Testing imports...")
+    required = [
+        ("cv2", "OpenCV"),
+        ("numpy", "NumPy"),
+        ("yaml", "PyYAML"),
+        ("serial", "pyserial"),
+        ("pynmea2", "pynmea2"),
+        ("requests", "requests"),
+        ("paho.mqtt.client", "paho-mqtt"),
+        ("flask", "Flask"),
+        ("flask_socketio", "Flask-SocketIO"),
+    ]
+    optional = [
+        ("RPi.GPIO", "RPi.GPIO (optional for non-Pi environments)"),
+    ]
+
+    all_required_present = True
+
+    for module_name, label in required:
+        try:
+            module = importlib.import_module(module_name)
+            version = getattr(module, "__version__", None)
+            if version:
+                print(f"  ✓ {label}: {version}")
+            else:
+                print(f"  ✓ {label}")
+        except ImportError as e:
+            all_required_present = False
+            print(f"  ✗ {label}: {e}")
+
+    for module_name, label in optional:
+        try:
+            importlib.import_module(module_name)
+            print(f"  ✓ {label}")
+        except ImportError:
+            print(f"  ! {label}: not installed")
+
+    return all_required_present
+
+
+def test_opencv_assets():
+    print("\nTesting OpenCV Haar cascades...")
     try:
         import cv2
-
-        print(f"  ✓ OpenCV: {cv2.__version__}")
     except ImportError as e:
-        print(f"  ✗ OpenCV: {e}")
+        print(f"  ✗ OpenCV import failed: {e}")
         return False
 
-    try:
-        import dlib
-
-        print(f"  ✓ dlib: {dlib.__version__}")
-    except ImportError as e:
-        print(f"  ✗ dlib: {e}")
+    cascade_dir = cv2.data.haarcascades
+    required = [
+        os.path.join(cascade_dir, "haarcascade_frontalface_default.xml"),
+        os.path.join(cascade_dir, "haarcascade_eye.xml"),
+    ]
+    missing = [path for path in required if not os.path.exists(path)]
+    if missing:
+        print("  ✗ Missing cascade files:")
+        for path in missing:
+            print(f"    - {path}")
         return False
 
-    try:
-        import numpy as np
-
-        print(f"  ✓ NumPy: {np.__version__}")
-    except ImportError as e:
-        print(f"  ✗ NumPy: {e}")
-        return False
-
-    try:
-        import yaml
-
-        print(f"  ✓ PyYAML")
-    except ImportError as e:
-        print(f"  ✗ PyYAML: {e}")
-        return False
-
-    try:
-        import serial
-
-        print(f"  ✓ pyserial")
-    except ImportError as e:
-        print(f"  ✗ pyserial: {e}")
-        return False
-
-    try:
-        import pynmea2
-
-        print(f"  ✓ pynmea2")
-    except ImportError as e:
-        print(f"  ✗ pynmea2: {e}")
-        return False
-
-    try:
-        import requests
-
-        print(f"  ✓ requests")
-    except ImportError as e:
-        print(f"  ✗ requests: {e}")
-        return False
-
+    print("  ✓ Haar cascade files found")
     return True
-
-
-def test_dlib_model():
-    print("\nTesting dlib model...")
-    import dlib
-    import os
-
-    model_path = os.path.join(PI_DIR, "shape_predictor_68_face_landmarks.dat")
-    if os.path.exists(model_path):
-        print(f"  ✓ Model file exists")
-        try:
-            detector = dlib.get_frontal_face_detector()
-            predictor = dlib.shape_predictor(model_path)
-            print(f"  ✓ Model loads correctly")
-            return True
-        except Exception as e:
-            print(f"  ✗ Model load failed: {e}")
-            return False
-    else:
-        print(f"  ✗ Model file not found: {model_path}")
-        return False
 
 
 def test_config():
@@ -185,7 +169,7 @@ if __name__ == "__main__":
 
     results.append(("Imports", test_imports()))
     results.append(("Config", test_config()))
-    results.append(("dlib Model", test_dlib_model()))
+    results.append(("OpenCV Assets", test_opencv_assets()))
     results.append(("Hardware", test_hardware()))
     results.append(("GPS", test_gps()))
     results.append(("Publisher", test_publisher()))

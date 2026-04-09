@@ -14,17 +14,14 @@ if [ ! -f "pi/config.yaml" ]; then
     exit 1
 fi
 
-# Check if dlib model exists
-if [ ! -f "pi/shape_predictor_68_face_landmarks.dat" ]; then
-    echo "Warning: dlib model not found!"
-    echo "Run: wget http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2"
-    echo "     bzip2 -d shape_predictor_68_face_landmarks.dat.bz2"
-fi
-
 # Parse camera source from config
 CAMERA_SOURCE=$(grep "source:" pi/config.yaml | head -1 | awk '{print $2}')
+ESP32_STREAM=$(grep "esp32_url:" pi/config.yaml | head -1 | awk '{print $2}')
 
 echo "Camera source: $CAMERA_SOURCE"
+if [ "$CAMERA_SOURCE" = "\"esp32\"" ] || [ "$CAMERA_SOURCE" = "esp32" ]; then
+    echo "ESP32 stream: $ESP32_STREAM"
+fi
 echo ""
 
 PI_IP=$(hostname -I 2>/dev/null | awk '{print $1}')

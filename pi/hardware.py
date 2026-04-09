@@ -1,6 +1,40 @@
-import RPi.GPIO as GPIO
 import time
 import threading
+
+try:
+    import RPi.GPIO as GPIO
+
+    GPIO_AVAILABLE = True
+except (ImportError, RuntimeError):
+    GPIO_AVAILABLE = False
+
+    class _MockGPIO:
+        BCM = "BCM"
+        OUT = "OUT"
+        HIGH = 1
+        LOW = 0
+
+        @staticmethod
+        def setmode(_mode):
+            return None
+
+        @staticmethod
+        def setwarnings(_enabled):
+            return None
+
+        @staticmethod
+        def setup(_pin, _mode):
+            return None
+
+        @staticmethod
+        def output(_pin, _value):
+            return None
+
+        @staticmethod
+        def cleanup():
+            return None
+
+    GPIO = _MockGPIO()
 
 
 class HardwareAlerts:
@@ -26,6 +60,14 @@ class HardwareAlerts:
         self._setup_gpio()
 
     def _setup_gpio(self):
+        if not GPIO_AVAILABLE:
+            print("[Hardware] RPi.GPIO unavailable, hardware alerts disabled.")
+            self.buzzer_enabled = False
+            self.vibration_enabled = False
+            self.led_enabled = False
+            self._running = True
+            return
+
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(False)
 

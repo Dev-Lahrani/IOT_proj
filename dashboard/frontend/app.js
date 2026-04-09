@@ -20,18 +20,24 @@ function updateStatus(data) {
     badge.className = "status-badge " + status.toLowerCase();
     badge.textContent = status;
 
-    document.getElementById("ear-value").textContent = data.ear || "--";
-    document.getElementById("mar-value").textContent = data.mar || "--";
+    document.getElementById("ear-value").textContent =
+        data.ear ?? "--";
+    document.getElementById("mar-value").textContent =
+        data.mar ?? "--";
     document.getElementById("timestamp-value").textContent = data.timestamp
-        ? data.timestamp.split("T")[1].split(".")[0]
+        ? (data.timestamp.includes("T")
+            ? data.timestamp.split("T")[1].split(".")[0]
+            : data.timestamp)
         : "--";
 
-    if (data.lat && data.lon) {
-        document.getElementById("lat-value").textContent = data.lat;
-        document.getElementById("lon-value").textContent = data.lon;
+    const lat = Number(data.lat);
+    const lon = Number(data.lon);
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+        document.getElementById("lat-value").textContent = lat;
+        document.getElementById("lon-value").textContent = lon;
         if (map) {
-            map.setView([data.lat, data.lon], 15);
-            marker.setLatLng([data.lat, data.lon]);
+            map.setView([lat, lon], 15);
+            marker.setLatLng([lat, lon]);
         }
     }
 
@@ -60,25 +66,6 @@ function updateAlerts(alerts) {
     `
         )
         .join("");
-
-    const style = document.createElement("style");
-    style.textContent = `
-        .alert-tag {
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-        .alert-tag.drowsy {
-            background: rgba(255,68,68,0.2);
-            color: #ff4444;
-        }
-        .alert-tag.yawning {
-            background: rgba(255,165,0,0.2);
-            color: #ffa500;
-        }
-    `;
-    document.head.appendChild(style);
 }
 
 function updateStats(stats) {
@@ -96,6 +83,54 @@ function showNotification(status) {
             body: `Driver is ${status}!`,
             icon: "/favicon.ico",
         });
+    }
+}
+
+async function initCameraFeed() {
+    const feed = document.getElementById("camera-feed");
+    const statusLabel = document.getElementById("camera-feed-status");
+    if (!feed || !statusLabel) return;
+
+    const setStatus = (text, isError = false) => {
+        statusLabel.textContent = text;
+        statusLabel.classList.toggle("error", isError);
+    };
+
+    const withCacheBust = (url) => {
+        const separator = url.includes("?") ? "&" : "?";
+        return `${url}${separator}t=${Date.now()}`;
+    };
+
+    try {
+        const response = await fetch("/camera");
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}`);
+        }
+
+        const camera = await response.json();
+        if (!camera.enabled || !camera.url) {
+            setStatus(camera.message || "Camera preview unavailable.", true);
+            return;
+        }
+
+        const streamUrl = camera.url;
+        let retryTimer = null;
+        feed.onerror = () => {
+            setStatus("Camera stream unavailable. Retrying...", true);
+            if (retryTimer) {
+                clearTimeout(retryTimer);
+            }
+            retryTimer = setTimeout(() => {
+                feed.src = withCacheBust(streamUrl);
+            }, 3000);
+        };
+        feed.onload = () => {
+            setStatus(`Live stream connected (${camera.source})`);
+        };
+        feed.src = withCacheBust(streamUrl);
+    } catch (error) {
+        console.error("Failed to initialize camera feed:", error);
+        setStatus("Failed to load camera settings.", true);
     }
 }
 
@@ -141,18 +176,22 @@ function initSocket() {
     });
 }
 
-document.getElementById("clear-btn").addEventListener("click", async () => {
-    if (confirm("Clear all driver data and alerts?")) {
-        await fetch("/clear", { method: "POST" });
-        updateStats({ total_records: 0, drowsy_alerts: 0, yawn_alerts: 0 });
-        updateAlerts([]);
-    }
-});
-
 document.addEventListener("DOMContentLoaded", () => {
     initMap();
     initSocket();
+    initCameraFeed();
     loadInitialData();
+
+    const clearButton = document.getElementById("clear-btn");
+    if (clearButton) {
+        clearButton.addEventListener("click", async () => {
+            if (confirm("Clear all driver data and alerts?")) {
+                await fetch("/clear", { method: "POST" });
+                updateStats({ total_records: 0, drowsy_alerts: 0, yawn_alerts: 0 });
+                updateAlerts([]);
+            }
+        });
+    }
 
     if ("Notification" in window && Notification.permission !== "granted") {
         Notification.requestPermission();

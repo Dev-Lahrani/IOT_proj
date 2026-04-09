@@ -8,7 +8,7 @@ A Raspberry Pi-based AI system that monitors driver fatigue in real-time and str
 - **Multi-camera support**: Android phone (IP Webcam), ESP32-CAM, USB webcam, or Pi Camera
 - **Hardware alerts**: Buzzer, vibration motor, and LED
 - **GPS tracking**: Neo-6M module for location
-- **IoT Dashboard**: Live status, map, and alert history
+- **IoT Dashboard**: Live status, map, alert history, and camera feed
 - **WebSocket**: Real-time updates without refreshing
 
 ## Quick Start
@@ -18,18 +18,15 @@ A Raspberry Pi-based AI system that monitors driver fatigue in real-time and str
 pip install -r pi/requirements.txt
 pip install -r dashboard/backend/requirements.txt
 
-# 2. Download dlib model
-wget http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2
-bzip2 -d shape_predictor_68_face_landmarks.dat.bz2
-mv shape_predictor_68_face_landmarks.dat pi/
+# 2. Configure camera in pi/config.yaml
 
-# 3. Configure camera in pi/config.yaml
-
-# 4. Run
+# 3. Run
 bash start.sh
 
-# 5. Open http://<pi-ip>:5000 from any device on the same network
+# 4. Open http://<pi-ip>:5000 from any device on the same network
 ```
+
+On **Raspberry Pi Ubuntu Server (headless)**, the detector runs without a local GUI preview and the live feed is available in the dashboard.
 
 ## Camera Setup
 
@@ -39,9 +36,10 @@ bash start.sh
 3. Update `config.yaml`: `source: phone`, `phone_url: http://<ip>:8080/video`
 
 ### ESP32-CAM
-1. Upload `esp32/camera_webserver.ino` to ESP32-CAM
+1. Upload `esp32/camera_webserver/camera_webserver.ino` to ESP32-CAM
 2. Update WiFi credentials in the sketch
 3. Update `config.yaml`: `source: esp32`, `esp32_url: http://<ip>/stream`
+4. Open the dashboard to view the live feed card
 
 ## Hardware
 

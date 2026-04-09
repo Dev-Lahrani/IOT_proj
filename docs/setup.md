@@ -69,7 +69,7 @@ This project detects driver drowsiness using eye and mouth aspect ratios, then s
 
 ## Software Setup
 
-### 1. Raspberry Pi OS Setup
+### 1. Ubuntu Server / Raspberry Pi OS Setup
 
 ```bash
 # Update system
@@ -100,13 +100,10 @@ cd ../dashboard/backend
 pip install -r requirements.txt
 ```
 
-### 3. Download dlib Landmark Model
+### 3. Verify camera URL in config
 
 ```bash
-# Download the facial landmark predictor
-wget http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2
-bzip2 -d shape_predictor_68_face_landmarks.dat.bz2
-mv shape_predictor_68_face_landmarks.dat pi/
+grep -E "source:|esp32_url:|phone_url:" pi/config.yaml
 ```
 
 ---
@@ -130,7 +127,7 @@ camera:
 ### Option 2: ESP32-CAM
 
 1. Install ESP32 board in Arduino IDE
-2. Open `esp32/camera_webserver.ino`
+2. Open `esp32/camera_webserver/camera_webserver.ino`
 3. Update WiFi credentials:
 
 ```cpp
@@ -227,7 +224,7 @@ hardware:
   led_enabled: true
 
 gps:
-  port: "/dev/ttyAMA0"
+  port: "/dev/ttyS0"
   fallback_lat: 18.5204
   fallback_lon: 73.8567
 
@@ -269,7 +266,7 @@ curl -I "http://192.168.1.100:8080/video"
 
 ```bash
 # Check GPS serial connection
-sudo minicom -D /dev/ttyAMA0 -b 9600
+sudo minicom -D /dev/ttyS0 -b 9600
 # Should see NMEA sentences like $GPGGA,...
 ```
 
@@ -283,10 +280,10 @@ sudo minicom -D /dev/ttyAMA0 -b 9600
 - Check firewall: `sudo ufw allow 5000`
 - Try accessing stream URL directly in browser
 
-### dlib model not found
+### OpenCV module not found
 
-- Ensure `shape_predictor_68_face_landmarks.dat` is in `pi/` directory
-- Download from: http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2
+- Ensure you installed Pi dependencies: `pip install -r pi/requirements.txt`
+- Verify Python environment: `python3 -c "import cv2; print(cv2.__version__)"`
 
 ### Face not detected
 
@@ -296,9 +293,9 @@ sudo minicom -D /dev/ttyAMA0 -b 9600
 
 ### GPS not working
 
-- Verify serial is enabled: `ls -l /dev/ttyAMA0`
+- Verify serial is enabled: `ls -l /dev/ttyS0`
 - Check wiring: TX→RX, RX→TX
-- Try `sudo chmod 666 /dev/ttyAMA0`
+- Try `sudo chmod 666 /dev/ttyS0`
 
 ### Dashboard not loading
 
@@ -330,7 +327,8 @@ sudo minicom -D /dev/ttyAMA0 -b 9600
 │       └── app.js
 │
 ├── esp32/
-│   └── camera_webserver.ino  # ESP32-CAM firmware
+│   └── camera_webserver/
+│       └── camera_webserver.ino  # ESP32-CAM firmware
 │
 └── docs/
     └── setup.md              # This file
@@ -352,6 +350,7 @@ sudo minicom -D /dev/ttyAMA0 -b 9600
    - Dashboard updates to "DROWSY" status
    - Map shows location
    - Alert logged in history
+   - Live camera feed appears in the dashboard
 
 ---
 

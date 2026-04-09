@@ -3,25 +3,8 @@
  * 
  * Hardware: ESP32 + OV2640 Camera Module
  * 
- * Connections:
- *   - GND -> GND
- *   - 3.3V -> 3.3V
- *   - U0TXD -> GPIO 1 (optional, for serial debug)
- *   - U0RXD -> GPIO 3 (optional)
- *   - GPIO 0 -> CAM_CLK
- *   - GPIO 2 -> CAM_D0
- *   - GPIO 4 -> CAM_D1
- *   - GPIO 5 -> CAM_D2
- *   - GPIO 18 -> CAM_D3
- *   - GPIO 19 -> CAM_D4
- *   - GPIO 21 -> CAM_D5
- *   - GPIO 22 -> CAM_D6
- *   - GPIO 23 -> CAM_D7
- *   - GPIO 25 -> CAM_PCLK
- *   - GPIO 26 -> CAM_HREF
- *   - GPIO 27 -> CAM_VSYNC
- *   - GPIO 32 -> CAM_SDA (SCCB)
- *   - GPIO 33 -> CAM_SCL (SCCB)
+ * Camera pin mapping below is preconfigured for the
+ * AI Thinker ESP32-CAM module.
  * 
  * Upload instructions:
  *   1. Select "AI Thinker ESP32-CAM" in Tools > Board
@@ -37,6 +20,10 @@
 #include "img_converters.h"
 #include <WiFi.h>
 #include <esp_http_server.h>
+#include <cstring>
+#if __has_include(<esp_arduino_version.h>)
+#include <esp_arduino_version.h>
+#endif
 
 // ============================================
 // WiFi Configuration - UPDATE THESE
@@ -200,8 +187,13 @@ camera_config_t getCameraConfig() {
   config.pin_pclk    = PCLK_GPIO_NUM;
   config.pin_vsync   = VSYNC_GPIO_NUM;
   config.pin_href    = HREF_GPIO_NUM;
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
   config.pin_sccb_sda = SIOD_GPIO_NUM;
   config.pin_sccb_scl = SIOC_GPIO_NUM;
+#else
+  config.pin_sscb_sda = SIOD_GPIO_NUM;
+  config.pin_sscb_scl = SIOC_GPIO_NUM;
+#endif
   config.pin_pwdn    = PWDN_GPIO_NUM;
   config.pin_reset   = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;
@@ -218,6 +210,11 @@ camera_config_t getCameraConfig() {
 void setup() {
   Serial.begin(115200);
   Serial.println();
+
+  if (strcmp(ssid, "YOUR_WIFI_SSID") == 0 || strcmp(password, "YOUR_WIFI_PASSWORD") == 0) {
+    Serial.println("Please set ssid and password before uploading.");
+    return;
+  }
 
   // Initialize camera
   camera_config_t config = getCameraConfig();
