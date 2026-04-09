@@ -17,27 +17,36 @@ class MjpegStreamCamera:
         self.url = url
         self.timeout = timeout
         self.stream = None
+        self.chunk_iter = None
         self.buffer = b""
         self._connect()
 
     def _connect(self):
+        self.release()
         try:
-            self.stream = requests.get(self.url, stream=True, timeout=self.timeout)
+            self.stream = requests.get(
+                self.url,
+                stream=True,
+                timeout=(5, self.timeout),
+            )
             self.stream.raise_for_status()
+            self.chunk_iter = self.stream.iter_content(chunk_size=4096)
             self.buffer = b""
             print(f"[Camera] Connected to {self.url}")
         except requests.RequestException as e:
             print(f"[Camera] Failed: {e}")
             self.stream = None
+            self.chunk_iter = None
 
     def isOpened(self):
-        return self.stream is not None
+        return self.stream is not None and self.chunk_iter is not None
 
     def read(self):
-        if self.stream is None:
+        if self.stream is None or self.chunk_iter is None:
             return False, None
         try:
-            for chunk in self.stream.iter_content(chunk_size=4096):
+            while True:
+                chunk = next(self.chunk_iter)
                 if not chunk:
                     continue
                 self.buffer += chunk
@@ -56,9 +65,9 @@ class MjpegStreamCamera:
                         self.buffer = b""
                     else:
                         break
-            return False, None
-        except requests.RequestException as e:
-            print(f"[Camera] Stream error: {e}, reconnecting...")
+        except (requests.RequestException, StopIteration) as e:
+            reason = str(e) or e.__class__.__name__
+            print(f"[Camera] Stream error: {reason}, reconnecting...")
             self._connect()
             return False, None
 
@@ -66,6 +75,7 @@ class MjpegStreamCamera:
         if self.stream:
             self.stream.close()
             self.stream = None
+        self.chunk_iter = None
 
 
 def get_camera_url(config):
