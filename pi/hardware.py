@@ -59,31 +59,37 @@ class HardwareAlerts:
 
         self._setup_gpio()
 
+    def _disable_hardware_alerts(self, reason):
+        print(f"[Hardware] {reason}. Hardware alerts disabled.")
+        self.buzzer_enabled = False
+        self.vibration_enabled = False
+        self.led_enabled = False
+        self._running = True
+
     def _setup_gpio(self):
         if not GPIO_AVAILABLE:
-            print("[Hardware] RPi.GPIO unavailable, hardware alerts disabled.")
-            self.buzzer_enabled = False
-            self.vibration_enabled = False
-            self.led_enabled = False
-            self._running = True
+            self._disable_hardware_alerts("RPi.GPIO unavailable")
             return
 
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(False)
+        try:
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setwarnings(False)
 
-        if self.buzzer_enabled:
-            GPIO.setup(self.buzzer_pin, GPIO.OUT)
-            GPIO.output(self.buzzer_pin, GPIO.LOW)
+            if self.buzzer_enabled:
+                GPIO.setup(self.buzzer_pin, GPIO.OUT)
+                GPIO.output(self.buzzer_pin, GPIO.LOW)
 
-        if self.vibration_enabled:
-            GPIO.setup(self.vibration_pin, GPIO.OUT)
-            GPIO.output(self.vibration_pin, GPIO.LOW)
+            if self.vibration_enabled:
+                GPIO.setup(self.vibration_pin, GPIO.OUT)
+                GPIO.output(self.vibration_pin, GPIO.LOW)
 
-        if self.led_enabled:
-            GPIO.setup(self.led_pin, GPIO.OUT)
-            GPIO.output(self.led_pin, GPIO.LOW)
+            if self.led_enabled:
+                GPIO.setup(self.led_pin, GPIO.OUT)
+                GPIO.output(self.led_pin, GPIO.LOW)
 
-        self._running = True
+            self._running = True
+        except (RuntimeError, PermissionError, OSError) as e:
+            self._disable_hardware_alerts(str(e))
 
     def trigger(self, alert_type="drowsy"):
         """Trigger all hardware alerts in a non-blocking thread."""
