@@ -45,6 +45,20 @@
    - Success criteria
    - Debugging procedures
 
+7. **[PHASE_8_TESTING_PROCEDURES.md](PHASE_8_TESTING_PROCEDURES.md)** (2-3 hours)
+   - Detailed execution guide for all 70+ tests
+   - Pre-testing setup checklist
+   - Hardware I/O testing procedures
+   - System stability validation (60-minute run)
+
+### **For Production Deployment**
+8. **[PHASE_9_PRODUCTION_DEPLOYMENT.md](PHASE_9_PRODUCTION_DEPLOYMENT.md)** (1-2 weeks)
+   - Security hardening (MQTT, dashboard, API)
+   - Threshold tuning procedures
+   - Fleet deployment strategy
+   - Monitoring and optimization
+   - Troubleshooting & maintenance schedule
+
 ---
 
 ## 📁 Repository Structure
@@ -52,7 +66,9 @@
 ```
 ├── QUICK_START.md                      ← START HERE (1-hour setup)
 ├── MIGRATION_SUMMARY.md                (Architecture overview)
-├── TESTING_GUIDE.md                    (70+ test cases)
+├── TESTING_GUIDE.md                    (70+ test cases overview)
+├── PHASE_8_TESTING_PROCEDURES.md       (Detailed testing execution)
+├── PHASE_9_PRODUCTION_DEPLOYMENT.md    (Deployment & optimization)
 ├── README.md                           (Project overview)
 │
 ├── esp32/
@@ -94,10 +110,18 @@
 3. Review: Code comments in `esp32/firmware/src/`
 
 ### **"I want to comprehensively test the system"**
-1. Read: **TESTING_GUIDE.md** - All 7 phases
-2. Execute: Phase 1-3 (hardware tests)
-3. Execute: Phase 4-6 (integration tests)
-4. Execute: Phase 7 (system stress test)
+1. Read: **TESTING_GUIDE.md** - Overview (30 min)
+2. Read: **PHASE_8_TESTING_PROCEDURES.md** - Detailed procedures (reference during testing)
+3. Execute: Phase 1-3 (hardware tests)
+4. Execute: Phase 4-6 (integration tests)
+5. Execute: Phase 7 (system stress test - 1 hour)
+
+### **"I want to deploy to production"**
+1. Complete: All testing phases (PHASE_8_TESTING_PROCEDURES.md)
+2. Read: **PHASE_9_PRODUCTION_DEPLOYMENT.md** - Security & optimization
+3. Follow: Pre-production checklist
+4. Execute: Threshold tuning procedures
+5. Deploy: Staged deployment strategy (pilot → adoption → fleet)
 
 ### **"I want to deploy the dashboard backend"**
 1. Read: **dashboard_backend/INTEGRATION.md**
@@ -119,7 +143,9 @@
 | **esp32/FLASHING_GUIDE.md** | 30-45 min | Hardware + firmware | Implementers |
 | **dashboard_backend/INTEGRATION.md** | 20-30 min | Backend setup | Backend developers |
 | **MIGRATION_SUMMARY.md** | 15-20 min | Architecture | Decision makers |
-| **TESTING_GUIDE.md** | 2-3 hours | Comprehensive tests | QA engineers |
+| **TESTING_GUIDE.md** | 30 min | Test overview | QA engineers |
+| **PHASE_8_TESTING_PROCEDURES.md** | 2-3 hours | Detailed test execution | QA engineers (in-depth) |
+| **PHASE_9_PRODUCTION_DEPLOYMENT.md** | Reference | Deployment & optimization | Ops/DevOps engineers |
 | **README.md** | 5-10 min | Overview | Everyone |
 
 ---
