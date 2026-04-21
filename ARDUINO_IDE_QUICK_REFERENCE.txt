@@ -1,0 +1,341 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║         ARDUINO IDE UPLOAD QUICK REFERENCE - ESP32-CAM                    ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+⏱️ TOTAL TIME: ~40 minutes (first time), ~10 minutes (subsequent times)
+
+═══════════════════════════════════════════════════════════════════════════
+
+PHASE 1: IDE SETUP (15 minutes)
+═══════════════════════════════════════════════════════════════════════════
+
+Step 1.1: Download & Install Arduino IDE
+  → https://www.arduino.cc/en/software
+  → Download for your OS
+  → Install and launch
+
+Step 1.2: Add ESP32 Board Support
+  → File → Preferences
+  → Additional Boards Manager URLs:
+     https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+  → OK
+
+Step 1.3: Install ESP32 Package
+  → Tools → Board → Boards Manager
+  → Search: ESP32
+  → Click "esp32 by Espressif Systems"
+  → Install (3-5 minutes, wait for "Installed")
+  → Close
+
+Step 1.4: Select Board & Configure
+  → Tools → Board → ESP32 Wrover Module (or ESP32-CAM if available)
+
+Step 1.5: Configure Settings
+  → Tools menu set:
+     - Upload Speed: 921600 (or 115200 if problems)
+     - Flash Mode: DIO
+     - Flash Freq: 80MHz
+     - CPU Freq: 240MHz
+     - Core Debug: None
+     - PSRAM: Enabled
+     - Partition: Default 4MB with spiffs
+
+Step 1.6: Install Libraries
+  → Sketch → Include Library → Manage Libraries
+  
+  Install:
+  1. "PubSubClient by Nick O'Leary" (MQTT)
+  2. "ArduinoJson by Benoit Blanchon" (JSON handling)
+
+═══════════════════════════════════════════════════════════════════════════
+
+PHASE 2: CODE PREPARATION (5 minutes)
+═══════════════════════════════════════════════════════════════════════════
+
+Step 2.1: Create New Project
+  → File → New
+  → File → Save As
+  → Name: esp32_drowsiness_detection
+  → Save
+
+Step 2.2: Create Tabs
+  Click dropdown arrow (right side) → New Tab for each:
+  1. config
+  2. face_detector
+  3. hardware
+  4. gps
+  5. mqtt_client
+
+Step 2.3: Copy Files to Tabs
+  
+  For each tab (config, face_detector, hardware, gps, mqtt_client):
+  1. Open our file from esp32/firmware/
+  2. Copy content
+  3. Paste in corresponding Arduino tab
+  4. Add include at top (except config):
+     #include "module_name.h"
+
+Step 2.4: Copy Main Code
+  1. Copy esp32/firmware/src/main.cpp
+  2. Paste in first/main tab
+  3. Add ALL includes at top:
+     #include "config.h"
+     #include "face_detector.h"
+     #include "hardware.h"
+     #include "gps.h"
+     #include "mqtt_client.h"
+     #include <WiFi.h>
+     #include <PubSubClient.h>
+     #include <ArduinoJson.h>
+     #include <HardwareSerial.h>
+
+Step 2.5: Verify Compilation
+  → Sketch → Verify/Compile (Ctrl+R)
+  → Should show success, no errors
+
+═══════════════════════════════════════════════════════════════════════════
+
+PHASE 3: HARDWARE CONNECTIONS (5 minutes)
+═══════════════════════════════════════════════════════════════════════════
+
+Connection Diagram:
+
+USB-to-Serial Adapter    ESP32-CAM
+─────────────────────────────────
+GND              ←→      GND
+5V               ←→      5V
+TX (D3)          ←→      U0R (RX)
+RX (D2)          ←→      U0T (TX)
+
+Also Connect (VERY IMPORTANT for uploading):
+GPIO0            ←→      GND (jumper wire)
+
+Step 3.1: Wiring Procedure
+  1. On breadboard, place USB adapter on one side
+  2. Place ESP32-CAM on other side
+  3. Connect GND and 5V (power first!)
+  4. Connect TX/RX lines
+  5. Connect GPIO0 to GND with jumper wire
+  6. Plug USB into computer
+
+Step 3.2: Verify COM Port
+  → Tools → Port
+  → Select available COM port (Windows: COM3, COM4...)
+  → (Mac: /dev/cu.*, Linux: /dev/ttyUSB*)
+
+═══════════════════════════════════════════════════════════════════════════
+
+PHASE 4: UPLOAD (10 minutes)
+═══════════════════════════════════════════════════════════════════════════
+
+Step 4.1: Upload Code
+  → Sketch → Upload (Ctrl+U)
+  → Watch bottom panel
+
+Step 4.2: Expected Output
+  Connecting.........
+  Chip is ESP32-WROVER
+  Uploading stub...
+  Running stub...
+  Sending image header...
+  [================] 100%
+  
+  (Long upload process)
+  
+  Hard resetting via RTS pin...
+  Upload complete!
+
+  ✓ If you see "Upload complete!" → SUCCESS
+
+Step 4.3: Upload Failed? Troubleshooting
+  
+  If "Connecting......." and fails:
+  ✓ Check GPIO0 connected to GND
+  ✓ Try lower baud rate: Tools → Upload Speed → 115200
+  ✓ Power cycle: disconnect USB, wait 5s, reconnect
+  
+  If "Port grayed out":
+  ✓ Install CH340 driver
+  ✓ Try different USB cable
+  ✓ Restart Arduino IDE
+
+═══════════════════════════════════════════════════════════════════════════
+
+PHASE 5: VERIFICATION (5 minutes)
+═══════════════════════════════════════════════════════════════════════════
+
+Step 5.1: IMPORTANT - Remove GPIO0 Connection
+  ✗ DISCONNECT the jumper wire connecting GPIO0-GND
+  ✗ Only for uploading, not for normal operation!
+
+Step 5.2: Open Serial Monitor
+  → Tools → Serial Monitor (Ctrl+Shift+M)
+  → Bottom right: Set Baud Rate to 115200
+  → Watch output
+
+Step 5.3: Expected Serial Output
+  =====================================
+  ESP32 Drowsiness Detection System
+  =====================================
+  
+  [Hardware] Alerts initialized
+  [Camera] Initialized successfully
+  [GPS] Initialized on UART1
+  [System] Setup complete, starting main loop
+  
+  [WiFi] Connecting to MY_NETWORK...
+  [WiFi] Connected! IP: 192.168.1.123
+  
+  [MQTT] Connecting to 192.168.1.100:1883...
+  [MQTT] Connected!
+  
+  [Detection] Ready...
+
+═══════════════════════════════════════════════════════════════════════════
+
+🔧 QUICK TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════════
+
+Problem: "Port grayed out" or "No ports available"
+Solution: 
+  1. Check USB cable (try different port)
+  2. Install CH340 driver (google "CH340 driver [your OS]")
+  3. Restart Arduino IDE
+  4. Restart computer if still issues
+
+Problem: "Failed to connect" during upload
+Solution:
+  1. Verify GPIO0 is connected to GND (most common issue!)
+  2. Try lower baud rate: 921600 → 115200
+  3. Power cycle device (disconnect/reconnect USB)
+  4. Different USB cable
+
+Problem: Serial monitor shows garbage/unreadable
+Solution:
+  1. Set baud rate to 115200 (bottom right of Serial Monitor)
+  2. Should show readable text
+
+Problem: "Sketch too large"
+Solution:
+  1. Tools → Flash Size → Select 16MB
+  2. Try again
+
+Problem: WiFi doesn't connect
+Solution:
+  1. Check WiFi name in config.h: WIFI_SSID
+  2. Check password in config.h: WIFI_PASSWORD
+  3. Verify network is 2.4GHz (not 5GHz)
+  4. Move device closer to router
+
+Problem: MQTT doesn't connect
+Solution:
+  1. Check broker IP in config.h: MQTT_BROKER
+  2. Verify MQTT broker is running
+  3. Test from computer: mosquitto_sub -h [broker_ip]
+
+═══════════════════════════════════════════════════════════════════════════
+
+📋 CHECKLIST BEFORE UPLOAD
+═══════════════════════════════════════════════════════════════════════════
+
+Before clicking Upload, verify:
+
+Code Setup:
+  ☐ All 5 tabs created (config, face_detector, hardware, gps, mqtt_client)
+  ☐ Code copied to all tabs
+  ☐ Includes added at top of main code
+  ☐ Sketch compiles (Verify/Compile shows success)
+
+Hardware:
+  ☐ USB adapter wired to ESP32 (GND, 5V, TX, RX)
+  ☐ GPIO0 connected to GND (IMPORTANT!)
+  ☐ USB plugged into computer
+  ☐ Serial port appears in Tools → Port
+
+Arduino IDE:
+  ☐ Board set to "ESP32 Wrover Module"
+  ☐ Upload Speed: 921600 (or 115200)
+  ☐ Port selected in Tools → Port
+  ☐ Libraries installed (PubSubClient, ArduinoJson)
+
+═══════════════════════════════════════════════════════════════════════════
+
+📊 FILE MAPPING - ARDUINO IDE TABS
+═══════════════════════════════════════════════════════════════════════════
+
+Our File                           → Arduino Tab Name
+─────────────────────────────────────────────────────
+esp32/firmware/include/config.h           → config
+esp32/firmware/src/face_detector.cpp      → face_detector
+esp32/firmware/src/hardware.cpp           → hardware
+esp32/firmware/src/gps.cpp                → gps
+esp32/firmware/src/mqtt_client.cpp        → mqtt_client
+esp32/firmware/src/main.cpp               → [Main tab]
+
+═══════════════════════════════════════════════════════════════════════════
+
+🚀 NEXT STEPS AFTER SUCCESSFUL UPLOAD
+═══════════════════════════════════════════════════════════════════════════
+
+1. Verify Basic Operation (5 min)
+   - Watch Serial Monitor for startup messages
+   - Confirm WiFi connects
+   - Confirm MQTT connects
+
+2. Test Detection (10 min)
+   - Show face to camera
+   - Look for detection logs
+   - Close eyes to test drowsy detection
+
+3. Test MQTT Messages (5 min)
+   - On your computer terminal:
+     mosquitto_sub -h [esp_ip] -t "vehicle/driver/status" -v
+   - Should see JSON messages every 2 seconds
+
+4. Proceed to Phase 8 Testing
+   - See: PHASE_8_TESTING_PROCEDURES.md
+   - Follow 70+ comprehensive tests
+
+═══════════════════════════════════════════════════════════════════════════
+
+💡 KEYBOARD SHORTCUTS
+═══════════════════════════════════════════════════════════════════════════
+
+Action                    Shortcut
+─────────────────────────────────
+Verify/Compile           Ctrl + R
+Upload                   Ctrl + U
+Open Serial Monitor      Ctrl + Shift + M
+Save                     Ctrl + S
+Format Code              Tools → Auto Format
+
+═══════════════════════════════════════════════════════════════════════════
+
+📞 NEED MORE HELP?
+═══════════════════════════════════════════════════════════════════════════
+
+See detailed guide: ARDUINO_IDE_UPLOAD_GUIDE.md
+
+Quick reference guides:
+  • QUICK_START.md - 1-hour setup overview
+  • FLASHING_GUIDE.md - PlatformIO alternative
+  • PHASE_8_TESTING_PROCEDURES.md - Testing after upload
+
+═══════════════════════════════════════════════════════════════════════════
+
+Quick Summary:
+1. Install Arduino IDE + ESP32 support + libraries (15 min)
+2. Create tabs, copy code, fix includes (5 min)
+3. Wire hardware: USB adapter → ESP32 + GPIO0-GND (5 min)
+4. Upload via Sketch → Upload (10 min)
+5. Verify in Serial Monitor (5 min)
+= 40 minutes total ✓
+
+═══════════════════════════════════════════════════════════════════════════
+
+Version: April 21, 2026
+Status: ✅ Ready to use
+Questions: See ARDUINO_IDE_UPLOAD_GUIDE.md for detailed help
+

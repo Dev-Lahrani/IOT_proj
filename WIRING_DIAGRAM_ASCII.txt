@@ -1,0 +1,267 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║         ESP32-CAM WIRING DIAGRAM FOR ARDUINO IDE UPLOAD                   ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+SCENARIO 1: USB-TO-SERIAL ADAPTER CONNECTION
+═══════════════════════════════════════════════════════════════════════════
+
+Device Layout:
+┌────────────────────┐              ┌──────────────────┐
+│                    │              │                  │
+│  USB-to-Serial     │              │   ESP32-CAM      │
+│   Adapter (CH340)  │              │                  │
+│                    │              │                  │
+│  [USB Connector]   │              │                  │
+│                    │              │                  │
+│  ┌──────────────┐  │              │  ┌────────────┐  │
+│  │ GND    ─────┼──┼──────────────┼─┼─ GND        │  │
+│  │ VCC 5V ─────┼──┼──────────────┼─┼─ 5V         │  │
+│  │ TX     ─────┼──┼──────────────┼─┼─ U0R        │  │
+│  │ RX     ─────┼──┼──────────────┼─┼─ U0T        │  │
+│  │             │  │              │  │             │  │
+│  │ [D3 pin]    │  │              │  │  GPIO0 ────┼──┼─── GND
+│  │ [D2 pin]    │  │              │  │  (temp)     │  │
+│  └──────────────┘  │              │  └────────────┘  │
+│                    │              │                  │
+└────────────────────┘              └──────────────────┘
+        │                                    │
+        └────────────────────┬───────────────┘
+                             │
+                      [Breadboard]
+
+
+WIRING TABLE:
+═══════════════════════════════════════════════════════════════════════════
+
+USB-to-Serial          ESP32-CAM
+───────────────────────────────────────────────────────
+GND (black)      →     GND (pin marked G or -)
+5V (red)         →     5V (positive)
+TX (green)       →     U0R (RX/receive pin)
+RX (white)       →     U0T (TX/transmit pin)
+
+SPECIAL CONNECTION:
+GPIO0 (pin)      →     GND (black)   ← ONLY during upload!
+                                     ← DISCONNECT after upload!
+
+
+BREADBOARD LAYOUT EXAMPLE:
+═══════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────┐
+│                       BREADBOARD                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  Left Side (USB-to-Serial)    Right Side (ESP32-CAM)        │
+│  ┌──────────────┐             ┌──────────────────┐         │
+│  │ USB Adapter  │             │   ESP32-CAM      │         │
+│  │              │             │                  │         │
+│  │  1-GND  ─────┼─────────────┼─ GND (G pin)     │         │
+│  │  2-VCC  ─────┼─────────────┼─ 5V              │         │
+│  │  3-TX   ─────┼─────────────┼─ U0R             │         │
+│  │  4-RX   ─────┼─────────────┼─ U0T             │         │
+│  │              │             │                  │         │
+│  │              │             │ GPIO0 ──Jumper──┼─ GND    │
+│  │              │             │      (while      │         │
+│  │              │             │      uploading)  │         │
+│  └──────────────┘             └──────────────────┘         │
+│                                                               │
+└─────────────────────────────────────────────────────────────┘
+
+
+STEP-BY-STEP PHYSICAL WIRING:
+═══════════════════════════════════════════════════════════════════════════
+
+Step 1: Place Components
+   [Insert USB-to-Serial adapter in left side of breadboard]
+   [Insert ESP32-CAM in right side of breadboard]
+
+Step 2: Connect Power (Red and Black wires)
+   Black wire: USB GND → Breadboard column → ESP32 GND
+   Red wire:  USB 5V → Breadboard column → ESP32 5V
+
+Step 3: Connect Data Lines (Signal wires)
+   Green wire: USB TX → ESP32 U0R (RX)
+   White wire: USB RX → ESP32 U0T (TX)
+
+Step 4: Connect GPIO0 to GND (for uploading only)
+   Yellow jumper: GPIO0 pin → Connect to GND column
+   
+   ⚠️ IMPORTANT: Remove this jumper AFTER successful upload!
+                 Only needed while uploading firmware!
+
+Step 5: Connect USB Cable
+   Plug USB end of adapter into computer
+
+Step 6: Verify Connection
+   Check all wires are:
+   ✓ Firmly inserted
+   ✓ In correct holes
+   ✓ Not touching each other (except at intended points)
+
+
+PIN REFERENCE - ESP32-CAM PINOUT:
+═══════════════════════════════════════════════════════════════════════════
+
+Top view of ESP32-CAM:
+   ┌────────────────────────────────┐
+   │  ┌──────────────────────────┐  │
+   │  │   Camera Module (OV2640)  │  │
+   │  └──────────────────────────┘  │
+   │                                 │
+   │  3.3V  GND  GPIO16 GPIO17 GND   │  (left side, top)
+   │   5V  [Pin] U0T    U0R   GND    │  (right side, bottom)
+   │   │                      │      │
+   │  GPIO0 GPIO2   RST   GPIO4 GPIO12 │
+   │   │      │      │     │     │   │
+   │   └──────┴──────┴─────┴─────┴───┘
+   │                                 │
+   └────────────────────────────────┘
+
+Key Pins:
+   • GND (Ground) - Power reference
+   • 5V - Power supply input
+   • U0T - UART TX (connect to USB adapter RX)
+   • U0R - UART RX (connect to USB adapter TX)
+   • GPIO0 - Flash/Program mode pin (connect to GND only during upload)
+   • GPIO4 - LED output
+   • GPIO12 - Buzzer output
+   • GPIO2 - Vibration motor output
+   • GPIO16/17 - GPS UART (if using Neo-6M GPS)
+
+
+UPLOAD MODE VS NORMAL MODE:
+═══════════════════════════════════════════════════════════════════════════
+
+UPLOAD MODE (uploading firmware):
+   GPIO0 ══ GND   ← Connected
+   Power:   5V
+   
+   Device is ready to receive new firmware
+   Serial monitor will show upload messages
+
+NORMAL MODE (after upload):
+   GPIO0 ═╳═ GND   ← Disconnected
+   Power:  5V
+   
+   Device boots normally and runs the application
+   Serial monitor shows application output
+
+
+WIRING CHECKLIST:
+═══════════════════════════════════════════════════════════════════════════
+
+Before uploading, verify:
+
+Power Connections:
+   ☐ GND wired from USB adapter to ESP32 GND
+   ☐ 5V wired from USB adapter to ESP32 5V
+   ☐ No loose connections
+
+Data Connections:
+   ☐ USB TX → ESP32 U0R (RX)
+   ☐ USB RX → ESP32 U0T (TX)
+   ☐ Wires don't touch each other
+   ☐ Wires firmly seated in breadboard
+
+Programming Mode:
+   ☐ GPIO0 connected to GND (yellow jumper)
+   ☐ Connection is solid
+   ☐ Jumper won't fall out during upload
+
+USB:
+   ☐ USB cable plugged into computer
+   ☐ COM port visible in Arduino IDE
+   ☐ Device recognized by OS
+
+
+COMMON WIRING MISTAKES:
+═══════════════════════════════════════════════════════════════════════════
+
+MISTAKE 1: TX/RX Reversed
+   ✗ Wrong: USB TX → ESP32 TX
+   ✓ Right: USB TX → ESP32 RX
+             USB RX → ESP32 TX
+   
+   Remember: TX always connects to RX on the other device!
+
+MISTAKE 2: GPIO0 Not Connected During Upload
+   ✗ Won't upload: GPIO0 floating or wrong pin
+   ✓ Will upload: GPIO0 firmly connected to GND
+   
+   This is the #1 reason uploads fail!
+
+MISTAKE 3: 5V Instead of 3.3V
+   ✗ Wrong: Using 3.3V pin
+   ✓ Right: Using 5V pin
+   
+   ESP32-CAM's voltage regulator accepts 5V input
+
+MISTAKE 4: Loose Breadboard Connections
+   ✗ Won't work: Wires inserted loosely
+   ✓ Will work: Wires firmly inserted and clicked
+   
+   Push wires into breadboard until they're seated
+
+MISTAKE 5: USB Adapter GND and 5V Swapped
+   ✗ Wrong: 5V to GND pin, GND to 5V
+   ✓ Right: Colors match (red=5V, black=GND)
+
+
+TROUBLESHOOTING WIRING:
+═══════════════════════════════════════════════════════════════════════════
+
+Problem: "No serial port available"
+Checks:
+   1. Is USB adapter connected to computer?
+   2. Is USB cable good? (try different cable)
+   3. Are all wires connected properly?
+   4. Need CH340 driver? (for some USB adapters)
+
+Problem: "Failed to connect to ESP32" during upload
+Checks:
+   1. Is GPIO0 connected to GND? (most common!)
+   2. Are TX/RX wires correct direction?
+   3. Is 5V power connected?
+   4. Are GND connections solid?
+
+Problem: "Garbage output" in Serial Monitor
+Checks:
+   1. Correct baud rate (115200)?
+   2. TX/RX not reversed?
+   3. Wires making good contact?
+
+
+IF IN DOUBT:
+═══════════════════════════════════════════════════════════════════════════
+
+Compare against this FINAL CHECKLIST:
+
+□ USB adapter plugged in
+□ GND (black) connected
+□ 5V (red) connected
+□ TX (green) connected to U0R
+□ RX (white) connected to U0T
+□ GPIO0 connected to GND
+□ All connections are firm
+□ No wires touching each other
+□ COM port visible in Arduino IDE
+□ Ready to upload!
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+After Upload:
+   1. Remove GPIO0 → GND jumper (upload completed)
+   2. Power cycle device (unplug USB, wait 5s, replug)
+   3. Watch Serial Monitor for startup messages
+   4. Done! ✓
+
+═══════════════════════════════════════════════════════════════════════════
+
+Version: April 21, 2026
+Created: For Arduino IDE Upload Guide
+Status: ✅ Complete
+
