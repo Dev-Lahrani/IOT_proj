@@ -365,3 +365,45 @@ You've successfully set up the system when:
 **Status:** ✅ Complete and ready for use
 
 Start with **[QUICK_START.md](QUICK_START.md)** →
+
+---
+
+## 🖥️ Arduino IDE Upload (Alternative to PlatformIO)
+
+### **For Arduino IDE Users**
+9. **[ARDUINO_IDE_UPLOAD_GUIDE.md](ARDUINO_IDE_UPLOAD_GUIDE.md)** (40-45 min)
+   - Complete step-by-step tutorial
+   - IDE setup and configuration
+   - Code organization into tabs
+   - Hardware wiring instructions
+   - Upload and verification
+   - Comprehensive troubleshooting
+
+10. **[ARDUINO_IDE_QUICK_REFERENCE.txt](ARDUINO_IDE_QUICK_REFERENCE.txt)** (Reference)
+   - Quick reference card (ASCII)
+   - 40-minute timeline breakdown
+   - All phases with clear steps
+   - Quick troubleshooting matrix
+   - Pre-upload checklist
+   - Keyboard shortcuts
+
+11. **[WIRING_DIAGRAM_ASCII.txt](WIRING_DIAGRAM_ASCII.txt)** (Reference)
+   - ASCII breadboard layout diagrams
+   - Pin-by-pin wiring reference
+   - Upload mode vs normal mode
+   - 5 common wiring mistakes
+   - Wiring troubleshooting guide
+   - Final verification checklist
+
+---
+
+### **Choose Your Upload Method**
+
+| Method | Best For | Time | Difficulty |
+|--------|----------|------|-----------|
+| **Arduino IDE** (New!) | Beginners, simple setup | 40 min | Easy |
+| **PlatformIO** | Advanced, features | 45 min | Intermediate |
+| **Web Tools** | No install needed | 30 min | Easy |
+
+---
+
