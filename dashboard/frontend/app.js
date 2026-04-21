@@ -30,8 +30,8 @@ function updateStatus(data) {
             : data.timestamp)
         : "--";
 
-    const lat = Number(data.lat);
-    const lon = Number(data.lon);
+    const lat = Number(data.lat ?? data.latitude);
+    const lon = Number(data.lon ?? data.longitude);
     if (Number.isFinite(lat) && Number.isFinite(lon)) {
         document.getElementById("lat-value").textContent = lat;
         document.getElementById("lon-value").textContent = lon;
@@ -41,7 +41,7 @@ function updateStatus(data) {
         }
     }
 
-    if (status === "DROWSY" || status === "YAWNING") {
+    if (status === "DROWSY" || status === "YAWN" || status === "YAWNING") {
         if (lastStatus !== status) {
             showNotification(status);
         }

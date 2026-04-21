@@ -9,7 +9,7 @@ import os
 import importlib
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-PI_DIR = os.path.join(PROJECT_ROOT, "pi")
+PI_DIR = os.path.join(PROJECT_ROOT, "legacy_pi")
 sys.path.insert(0, PI_DIR)
 
 
@@ -82,7 +82,7 @@ def test_config():
     print("\nTesting config.yaml...")
     import yaml
 
-    config_path = os.path.join(os.path.dirname(__file__), "pi", "config.yaml")
+    config_path = os.path.join(os.path.dirname(__file__), "legacy_pi", "config.yaml")
     if os.path.exists(config_path):
         try:
             with open(config_path) as f:

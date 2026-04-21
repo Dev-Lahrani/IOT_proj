@@ -71,7 +71,7 @@ def on_mqtt_data(data):
             print(f"[Alert] {alert_entry}")
     
     # Broadcast to all connected WebSocket clients
-    socketio.emit('status_update', data, namespace='/', broadcast=True)
+    socketio.emit('status_update', data, namespace='/')
 
 def mqtt_connection_monitor():
     """Monitor MQTT connection status"""
@@ -87,14 +87,14 @@ def mqtt_connection_monitor():
             
             socketio.emit('connection_lost', 
                          {'message': 'Lost connection to ESP32'}, 
-                         namespace='/', broadcast=True)
+                         namespace='/')
         elif mqtt_listener:
             with update_lock:
                 current_status['connection_status'] = 'connected'
             
             socketio.emit('connection_restored',
                          {'message': 'Reconnected to ESP32'},
-                         namespace='/', broadcast=True)
+                         namespace='/')
 
 # ============= Routes =============
 

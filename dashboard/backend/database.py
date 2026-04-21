@@ -47,6 +47,9 @@ class Database:
             conn.close()
 
     def insert_driver_data(self, data):
+        lat = data.get("lat", data.get("latitude"))
+        lon = data.get("lon", data.get("longitude"))
+        status = data.get("status")
         with self._lock:
             conn = sqlite3.connect(self.db_path)
             c = conn.cursor()
@@ -55,17 +58,17 @@ class Database:
                 (
                     data.get("ear"),
                     data.get("mar"),
-                    data.get("status"),
-                    data.get("lat"),
-                    data.get("lon"),
+                    status,
+                    lat,
+                    lon,
                     data.get("timestamp"),
                 ),
             )
             conn.commit()
             conn.close()
 
-        if data.get("status") in ["DROWSY", "YAWNING"]:
-            self.insert_alert(data["status"], data)
+        if status in ("DROWSY", "YAWN", "YAWNING"):
+            self.insert_alert(status, data)
 
     def insert_alert(self, event_type, details=None):
         with self._lock:
@@ -113,7 +116,9 @@ class Database:
             total_records = c.fetchone()[0]
             c.execute("SELECT COUNT(*) FROM alerts WHERE event_type = 'DROWSY'")
             drowsy_count = c.fetchone()[0]
-            c.execute("SELECT COUNT(*) FROM alerts WHERE event_type = 'YAWNING'")
+            c.execute(
+                "SELECT COUNT(*) FROM alerts WHERE event_type IN ('YAWN', 'YAWNING')"
+            )
             yawn_count = c.fetchone()[0]
             conn.close()
             return {

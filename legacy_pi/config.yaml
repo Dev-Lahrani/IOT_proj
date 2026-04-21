@@ -66,8 +66,9 @@ dashboard:
   # Data push interval (seconds)
   push_interval: 2.0
 
-  # Use MQTT instead of HTTP (false = HTTP)
-  use_mqtt: false
+  # Use MQTT instead of HTTP (false = HTTP). ESP32-CAM firmware publishes
+  # over MQTT, so keep this true unless you are pushing via HTTP /update.
+  use_mqtt: true
   mqtt_broker: "localhost"
   mqtt_port: 1883
   mqtt_topic: "vehicle/driver/status"

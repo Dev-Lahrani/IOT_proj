@@ -3,12 +3,13 @@ from flask_socketio import SocketIO
 from database import Database
 import yaml
 import os
+import sys
 from urllib.parse import urlparse
 
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.dirname(BACKEND_DIR))
 FRONTEND_DIR = os.path.join(PROJECT_ROOT, "dashboard", "frontend")
-CONFIG_PATH = os.path.join(PROJECT_ROOT, "pi", "config.yaml")
+CONFIG_PATH = os.path.join(PROJECT_ROOT, "legacy_pi", "config.yaml")
 DATABASE_PATH = os.path.join(BACKEND_DIR, "driver_data.db")
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
@@ -128,10 +129,37 @@ def clear_data():
     return jsonify({"success": True})
 
 
+def _start_mqtt_bridge():
+    dash = config.get("dashboard", {})
+    if not dash.get("use_mqtt"):
+        return
+    sys.path.insert(
+        0, os.path.join(PROJECT_ROOT, "dashboard_backend")
+    )
+    try:
+        from mqtt_listener import create_mqtt_listener
+    except ImportError as e:
+        print(f"[MQTT] paho-mqtt not installed, bridge disabled: {e}")
+        return
+
+    broker = dash.get("mqtt_broker", "localhost")
+    port = int(dash.get("mqtt_port", 1883))
+    topic = dash.get("mqtt_topic", "vehicle/driver/status")
+    listener = create_mqtt_listener(broker, port, topic)
+
+    def on_mqtt_message(data):
+        db.insert_driver_data(data)
+        socketio.emit("driver_update", data)
+
+    listener.register_callback(on_mqtt_message)
+    print(f"[MQTT] Bridge active: {broker}:{port} {topic}")
+
+
 if __name__ == "__main__":
     host = config["dashboard"]["host"]
     port = config["dashboard"]["port"]
     debug = config["dashboard"]["debug"]
+    _start_mqtt_bridge()
     socketio.run(
         app,
         host=host,
