@@ -8,14 +8,27 @@
 // Face detection runs on the host dashboard backend (MediaPipe).
 // ============================================
 
+// Include secrets if available (gitignored)
+#ifdef __has_include
+#if __has_include("secrets.h")
+#include "secrets.h"
+#endif
+#endif
+
 // WiFi Configuration
-#define WIFI_SSID            "YOUR_SSID"
-#define WIFI_PASSWORD        "YOUR_PASSWORD"
+#ifndef WIFI_SSID
+#define WIFI_SSID            "YOUR_WIFI_SSID"
+#endif
+#ifndef WIFI_PASSWORD
+#define WIFI_PASSWORD        "YOUR_WIFI_PASSWORD"
+#endif
 #define WIFI_MAX_RETRIES     20
 #define WIFI_TIMEOUT_MS      10000
 
 // MQTT Broker
+#ifndef MQTT_BROKER
 #define MQTT_BROKER          "192.168.1.100"
+#endif
 #define MQTT_PORT            1883
 #define MQTT_CLIENT_ID       "esp32_controller"
 

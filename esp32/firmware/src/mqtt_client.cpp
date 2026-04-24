@@ -75,14 +75,26 @@ bool MQTTPublisher::connect_mqtt() {
 }
 
 void MQTTPublisher::ensure_connected() {
+    // Check WiFi connection
     if (WiFi.status() != WL_CONNECTED) {
+        if (wifi_connected) {
+            Serial.println("[WiFi] Disconnected");
+        }
         wifi_connected = false;
         connect_wifi(WIFI_SSID, WIFI_PASSWORD);
     }
+    
+    // Check MQTT connection
     if (wifi_connected && !mqtt_client.connected()) {
+        if (mqtt_connected) {
+            Serial.println("[MQTT] Disconnected");
+        }
         mqtt_connected = false;
+        // Reset cooldown on unexpected disconnect to allow immediate reconnect
+        last_connection_attempt = 0;
         connect_mqtt();
     }
+    
     if (mqtt_connected) {
         mqtt_client.loop();
     }
@@ -101,9 +113,12 @@ void MQTTPublisher::publish_gps(const GPSData& gps) {
     serializeJson(doc, payload);
 
     if (!mqtt_client.publish(MQTT_GPS_TOPIC, payload.c_str())) {
+        Serial.println("[MQTT] Publish failed, disconnecting");
         mqtt_connected = false;
+        last_connection_attempt = 0;  // Allow immediate reconnect attempt
+    } else {
+        Serial.printf("[GPS] Published: %.4f, %.4f\n", gps.latitude, gps.longitude);
     }
-    Serial.printf("[GPS] Published: %.4f, %.4f\n", gps.latitude, gps.longitude);
 }
 
 void MQTTPublisher::cleanup() {

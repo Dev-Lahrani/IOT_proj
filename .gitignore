@@ -1,0 +1,30 @@
+# Secrets
+esp32/firmware/include/secrets.h
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Ruff
+.ruff_cache/
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Databases / logs
+*.db
+*.sqlite
+*.sqlite3
+*.log

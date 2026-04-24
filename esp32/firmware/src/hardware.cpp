@@ -1,11 +1,16 @@
 #include "hardware.h"
 #include "config.h"
-#include <driver/ledc.h>
+#include <Arduino.h>
 
 HardwareAlerts::HardwareAlerts() 
     : buzzer_enabled(BUZZER_ENABLED),
       led_enabled(LED_ENABLED),
-      vibration_enabled(VIBRATION_ENABLED) {}
+      vibration_enabled(VIBRATION_ENABLED),
+      current_phase(IDLE),
+      buzzer_cycles_remaining(0),
+      led_blinks_remaining(0),
+      phase_start_time(0),
+      alert_type(nullptr) {}
 
 void HardwareAlerts::init() {
     if (buzzer_enabled) {
@@ -27,48 +32,111 @@ void HardwareAlerts::init() {
 }
 
 void HardwareAlerts::trigger_alert(const char* alert_type) {
-    int buzzer_cycles = (strcmp(alert_type, "drowsy") == 0) ? 3 : 2;
-    
-    if (buzzer_enabled) {
-        _buzzer_pulse(buzzer_cycles);
+    if (current_phase != IDLE) {
+        return;  // Alert already in progress
     }
     
-    if (vibration_enabled) {
-        _vibrate();
+    this->alert_type = alert_type;
+    buzzer_cycles_remaining = (strcmp(alert_type, "drowsy") == 0) ? 3 : 2;
+    led_blinks_remaining = LED_BLINK_COUNT;
+    
+    _start_buzzer_phase();
+}
+
+void HardwareAlerts::update() {
+    if (current_phase == IDLE) {
+        return;
     }
     
-    if (led_enabled) {
-        _blink_led();
+    unsigned long elapsed = millis() - phase_start_time;
+    
+    switch (current_phase) {
+        case BUZZER_ON:
+            if (elapsed >= BUZZER_DURATION_MS) {
+                digitalWrite(BUZZER_PIN, LOW);
+                buzzer_cycles_remaining--;
+                if (buzzer_cycles_remaining > 0) {
+                    current_phase = BUZZER_OFF;
+                    phase_start_time = millis();
+                } else {
+                    _start_vibration_phase();
+                }
+            }
+            break;
+            
+        case BUZZER_OFF:
+            if (elapsed >= BUZZER_DURATION_MS) {
+                _start_buzzer_phase();
+            }
+            break;
+            
+        case VIBRATING:
+            if (elapsed >= VIBRATION_DURATION_MS) {
+                digitalWrite(VIBRATION_PIN, LOW);
+                _start_led_phase();
+            }
+            break;
+            
+        case LED_ON:
+            if (elapsed >= LED_BLINK_DURATION_MS) {
+                digitalWrite(LED_PIN, LOW);
+                led_blinks_remaining--;
+                if (led_blinks_remaining > 0) {
+                    current_phase = LED_OFF;
+                    phase_start_time = millis();
+                } else {
+                    current_phase = IDLE;
+                    Serial.printf("[Hardware] Alert '%s' complete\n", alert_type);
+                }
+            }
+            break;
+            
+        case LED_OFF:
+            if (elapsed >= LED_BLINK_DURATION_MS) {
+                _start_led_phase();
+            }
+            break;
+            
+        default:
+            break;
     }
 }
 
-void HardwareAlerts::_buzzer_pulse(int cycles) {
-    for (int i = 0; i < cycles; i++) {
-        digitalWrite(BUZZER_PIN, HIGH);
-        delay(BUZZER_DURATION_MS);
-        digitalWrite(BUZZER_PIN, LOW);
-        delay(BUZZER_DURATION_MS);
+void HardwareAlerts::_start_buzzer_phase() {
+    if (!buzzer_enabled) {
+        _start_vibration_phase();
+        return;
     }
+    current_phase = BUZZER_ON;
+    phase_start_time = millis();
+    digitalWrite(BUZZER_PIN, HIGH);
 }
 
-void HardwareAlerts::_vibrate() {
+void HardwareAlerts::_start_vibration_phase() {
+    if (!vibration_enabled) {
+        _start_led_phase();
+        return;
+    }
+    current_phase = VIBRATING;
+    phase_start_time = millis();
     digitalWrite(VIBRATION_PIN, HIGH);
-    delay(VIBRATION_DURATION_MS);
-    digitalWrite(VIBRATION_PIN, LOW);
 }
 
-void HardwareAlerts::_blink_led() {
-    for (int i = 0; i < LED_BLINK_COUNT; i++) {
-        digitalWrite(LED_PIN, HIGH);
-        delay(LED_BLINK_DURATION_MS);
-        digitalWrite(LED_PIN, LOW);
-        delay(LED_BLINK_DURATION_MS);
+void HardwareAlerts::_start_led_phase() {
+    if (!led_enabled) {
+        current_phase = IDLE;
+        Serial.printf("[Hardware] Alert '%s' complete\n", alert_type);
+        return;
     }
+    current_phase = LED_ON;
+    phase_start_time = millis();
+    digitalWrite(LED_PIN, HIGH);
 }
 
 void HardwareAlerts::cleanup() {
-    digitalWrite(BUZZER_PIN, LOW);
-    digitalWrite(LED_PIN, LOW);
-    digitalWrite(VIBRATION_PIN, LOW);
+    if (buzzer_enabled)    digitalWrite(BUZZER_PIN, LOW);
+    if (led_enabled)       digitalWrite(LED_PIN, LOW);
+    if (vibration_enabled) digitalWrite(VIBRATION_PIN, LOW);
+    current_phase = IDLE;
     Serial.println("[Hardware] Cleanup complete");
 }

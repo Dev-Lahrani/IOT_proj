@@ -37,6 +37,7 @@ void setup() {
 
 void loop() {
     mqtt.ensure_connected();
+    hardware.update();  // Non-blocking alert updates
 
     static unsigned long last_gps_pub = 0;
     if (millis() - last_gps_pub >= GPS_PUBLISH_INTERVAL_MS) {
@@ -44,6 +45,4 @@ void loop() {
         mqtt.publish_gps(gps);
         last_gps_pub = millis();
     }
-
-    delay(10);
 }
