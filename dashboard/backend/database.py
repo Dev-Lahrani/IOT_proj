@@ -56,6 +56,9 @@ class Database:
         lat = data.get("lat", data.get("latitude"))
         lon = data.get("lon", data.get("longitude"))
         status = data.get("status")
+        timestamp = data.get("timestamp") or data.get("received_at")
+        if not timestamp:
+            timestamp = datetime.now().isoformat(timespec="seconds")
         with self._lock:
             conn = self._get_connection()
             c = conn.cursor()
@@ -67,13 +70,16 @@ class Database:
                     status,
                     lat,
                     lon,
-                    data.get("timestamp"),
+                    str(timestamp),
                 ),
             )
             conn.commit()
             conn.close()
 
-        if status in ("DROWSY", "YAWN", "YAWNING"):
+        alert_triggered = data.get("alert_triggered")
+        if status in ("DROWSY", "YAWN", "YAWNING") and (
+            alert_triggered is None or self._as_bool(alert_triggered)
+        ):
             self.insert_alert(status, data)
 
     def insert_alert(self, event_type, details=None):
@@ -130,3 +136,18 @@ class Database:
                 "drowsy_alerts": drowsy_count,
                 "yawn_alerts": yawn_count,
             }
+
+    def clear_all(self):
+        with self._lock:
+            conn = self._get_connection()
+            c = conn.cursor()
+            c.execute("DELETE FROM driver_data")
+            c.execute("DELETE FROM alerts")
+            conn.commit()
+            conn.close()
+
+    @staticmethod
+    def _as_bool(value):
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "on"}
+        return bool(value)

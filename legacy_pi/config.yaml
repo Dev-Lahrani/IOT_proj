@@ -10,7 +10,7 @@ camera:
   # esp32_url: the IP the ESP32-CAM prints on its serial monitor after
   # joining the "motorola" WiFi (e.g. http://192.168.x.x/stream).
   phone_url: "http://192.168.1.100:8080/video"
-  esp32_url: "http://REPLACE_WITH_ESP32CAM_IP/stream"
+  esp32_url: "http://10.120.132.7/stream"
   usb_device: 0
   picam_index: 0
 
@@ -62,7 +62,7 @@ gps:
 dashboard:
   # Flask server settings
   host: "0.0.0.0"
-  port: 5000
+  port: 5050
   debug: false
 
   # Data push interval (seconds)
@@ -74,6 +74,7 @@ dashboard:
   mqtt_broker: "localhost"
   mqtt_port: 1883
   mqtt_topic: "vehicle/driver/status"
+  mqtt_gps_topic: "vehicle/gps"
 
 alert_cooldown:
   # Minimum seconds between repeated same-type alerts

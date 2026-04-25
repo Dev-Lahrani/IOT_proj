@@ -81,6 +81,7 @@ class DrowsinessDetector:
         self.ear_frames   = det["ear_consecutive_frames"]
         self.mar_frames   = det["mar_consecutive_frames"]
         self.frame_skip   = det.get("frame_skip", 2)
+        self.push_interval = float(dash.get("push_interval", 2.0))
         self.drowsy_cool  = cool.get("drowsy_cooldown", 10)
         self.yawn_cool    = cool.get("yawn_cooldown", 15)
 
@@ -88,6 +89,8 @@ class DrowsinessDetector:
         self._mouth_ctr   = 0
         self._last_drowsy = 0.0
         self._last_yawn   = 0.0
+        self._last_publish = 0.0
+        self._last_published_status = None
         self._frame_n     = 0
 
         # Shared GPS state — updated by MQTT subscription in a background thread
@@ -143,10 +146,20 @@ class DrowsinessDetector:
             "alert_triggered": alert,
         })
         self._mq.publish(self._status_topic, payload)
+        self._last_publish = time.time()
+        self._last_published_status = status
 
         if alert:
             cmd = json.dumps({"type": status.lower()})
             self._mq.publish(self._alert_topic, cmd)
+
+    def _should_publish(self, status: str, alert: bool) -> bool:
+        now = time.time()
+        if alert:
+            return True
+        if self._last_published_status != status:
+            return True
+        return (now - self._last_publish) >= self.push_interval
 
     def run(self):
         print(f"[Detector] Opening stream: {self.cam_url}")
@@ -216,7 +229,8 @@ class DrowsinessDetector:
                     if not alert and status in ("DROWSY", "YAWN", "NO_FACE"):
                         status = "NORMAL"
 
-                self._publish(status, ear, mar, alert)
+                if self._should_publish(status, alert):
+                    self._publish(status, ear, mar, alert)
 
         except KeyboardInterrupt:
             pass

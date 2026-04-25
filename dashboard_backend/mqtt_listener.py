@@ -5,11 +5,42 @@ Receives MQTT messages from ESP32 and feeds data to Flask dashboard backend
 """
 
 import json
+import os
 import threading
 import time
 import paho.mqtt.client as mqtt
+import yaml
 from datetime import datetime
 from typing import Dict, Any, Callable
+
+CONFIG_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "legacy_pi", "config.yaml",
+)
+
+
+def load_mqtt_config(path: str = CONFIG_PATH) -> Dict[str, Any]:
+    """Load MQTT settings from legacy_pi/config.yaml with safe defaults."""
+    defaults = {
+        "broker": "localhost",
+        "port": 1883,
+        "topic": "vehicle/driver/status",
+    }
+    try:
+        with open(path, "r") as f:
+            cfg = yaml.safe_load(f) or {}
+        dash = cfg.get("dashboard", {}) or {}
+        return {
+            "broker": dash.get("mqtt_broker", defaults["broker"]),
+            "port": int(dash.get("mqtt_port", defaults["port"])),
+            "topic": dash.get("mqtt_topic", defaults["topic"]),
+        }
+    except FileNotFoundError:
+        print(f"[MQTT] Config not found at {path}, using defaults")
+        return defaults
+    except Exception as e:
+        print(f"[MQTT] Failed to read config ({e}), using defaults")
+        return defaults
 
 class MQTTListener:
     def __init__(self, broker: str, port: int, topic: str):
@@ -118,11 +149,11 @@ def create_mqtt_listener(broker: str = "localhost", port: int = 1883,
 
 
 if __name__ == "__main__":
-    # Example usage
+    mqtt_cfg = load_mqtt_config()
     listener = create_mqtt_listener(
-        broker="192.168.1.100",
-        port=1883,
-        topic="vehicle/driver/status"
+        broker=mqtt_cfg["broker"],
+        port=mqtt_cfg["port"],
+        topic=mqtt_cfg["topic"],
     )
     
     def on_data_received(data):

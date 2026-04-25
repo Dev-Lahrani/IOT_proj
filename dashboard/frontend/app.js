@@ -1,43 +1,131 @@
 let map;
 let marker;
 let socket;
-let lastStatus = "ALERT";
+let pollTimer;
+let lastStatus = "NO_DATA";
+const DEFAULT_COORDS = [18.5204, 73.8567];
+const POLL_INTERVAL_MS = 3000;
+
+function setConnectionState(text, state = "offline") {
+    const dot = document.getElementById("connection-dot");
+    const label = document.getElementById("connection-text");
+    if (!dot || !label) return;
+
+    dot.classList.remove("connected", "polling");
+    if (state === "connected") {
+        dot.classList.add("connected");
+    } else if (state === "polling") {
+        dot.classList.add("polling");
+    }
+    label.textContent = text;
+}
+
+function formatMetricValue(value, digits = 3) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric.toFixed(digits) : "--";
+}
+
+function formatTimestamp(value) {
+    if (value === null || value === undefined || value === "") {
+        return "--";
+    }
+
+    const parseValue = typeof value === "string" && /^\d+$/.test(value.trim())
+        ? Number(value)
+        : value;
+    const numeric = Number(parseValue);
+    let date;
+
+    if (Number.isFinite(numeric) && String(parseValue).trim() !== "") {
+        if (numeric > 0 && numeric < 946684800) {
+            return `${numeric}s uptime`;
+        }
+        const epochMs = numeric < 1_000_000_000_000 ? numeric * 1000 : numeric;
+        date = new Date(epochMs);
+    } else {
+        date = new Date(value);
+    }
+
+    if (!Number.isNaN(date.getTime())) {
+        return date.toLocaleString([], {
+            hour12: false,
+            month: "short",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+        });
+    }
+
+    return String(value);
+}
 
 function initMap() {
-    map = L.map("map").setView([18.5204, 73.8567], 13);
+    const mapNode = document.getElementById("map");
+    if (!mapNode) return;
+
+    if (!window.L) {
+        mapNode.classList.add("map-fallback");
+        mapNode.innerHTML = "<p>Map preview unavailable in this browser session. Live coordinates are still updating below.</p>";
+        return;
+    }
+
+    map = L.map("map").setView(DEFAULT_COORDS, 13);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '&copy; OpenStreetMap contributors',
     }).addTo(map);
-    marker = L.marker([18.5204, 73.8567]).addTo(map);
+    marker = L.marker(DEFAULT_COORDS).addTo(map);
 }
 
 function updateStatus(data) {
-    if (!data || !data.status) return;
+    if (!data) return;
 
     const badge = document.getElementById("status-badge");
-    const status = data.status;
+    const status = (data.status || "NO_DATA").toUpperCase();
+    const summary = document.getElementById("status-summary");
+    const timestampLabel = formatTimestamp(data.timestamp ?? data.received_at);
+    const lastUpdate = document.getElementById("last-update-value");
+    const badgeClass = {
+        NORMAL: "normal",
+        DROWSY: "drowsy",
+        YAWN: "yawn",
+        YAWNING: "yawn",
+        NO_FACE: "no-face",
+        NO_DATA: "no-data",
+    }[status] || "no-data";
 
-    badge.className = "status-badge " + status.toLowerCase();
-    badge.textContent = status;
+    if (badge) {
+        badge.className = `status-badge ${badgeClass}`;
+        badge.textContent = status.replace(/_/g, " ");
+    }
+    if (summary) {
+        summary.textContent = {
+            NORMAL: "Eyes open and mouth within the normal range.",
+            DROWSY: "Eyes remained below the configured EAR threshold.",
+            YAWN: "Mouth opening exceeded the configured MAR threshold.",
+            YAWNING: "Mouth opening exceeded the configured MAR threshold.",
+            NO_FACE: "Camera feed is live but no face is currently tracked.",
+            NO_DATA: "Waiting for telemetry from the detector and controller.",
+        }[status] || "Waiting for telemetry from the detector and controller.";
+    }
 
     document.getElementById("ear-value").textContent =
-        data.ear ?? "--";
+        formatMetricValue(data.ear);
     document.getElementById("mar-value").textContent =
-        data.mar ?? "--";
-    document.getElementById("timestamp-value").textContent = data.timestamp
-        ? (data.timestamp.includes("T")
-            ? data.timestamp.split("T")[1].split(".")[0]
-            : data.timestamp)
-        : "--";
+        formatMetricValue(data.mar);
+    document.getElementById("timestamp-value").textContent = timestampLabel;
+    if (lastUpdate) {
+        lastUpdate.textContent = timestampLabel;
+    }
 
     const lat = Number(data.lat ?? data.latitude);
     const lon = Number(data.lon ?? data.longitude);
     if (Number.isFinite(lat) && Number.isFinite(lon)) {
-        document.getElementById("lat-value").textContent = lat;
-        document.getElementById("lon-value").textContent = lon;
+        document.getElementById("lat-value").textContent = lat.toFixed(5);
+        document.getElementById("lon-value").textContent = lon.toFixed(5);
         if (map) {
             map.setView([lat, lon], 15);
-            marker.setLatLng([lat, lon]);
+            marker?.setLatLng([lat, lon]);
         }
     }
 
@@ -60,8 +148,8 @@ function updateAlerts(alerts) {
         .map(
             (alert) => `
         <tr>
-            <td>${alert.timestamp}</td>
-            <td><span class="alert-tag ${alert.event_type.toLowerCase()}">${alert.event_type}</span></td>
+            <td>${formatTimestamp(alert.timestamp)}</td>
+            <td><span class="alert-tag ${(alert.event_type || "").toLowerCase()}">${alert.event_type}</span></td>
         </tr>
     `
         )
@@ -78,10 +166,9 @@ function updateStats(stats) {
 }
 
 function showNotification(status) {
-    if (Notification.permission === "granted") {
+    if ("Notification" in window && Notification.permission === "granted") {
         new Notification("Driver Alert", {
             body: `Driver is ${status}!`,
-            icon: "/favicon.ico",
         });
     }
 }
@@ -89,6 +176,7 @@ function showNotification(status) {
 async function initCameraFeed() {
     const feed = document.getElementById("camera-feed");
     const statusLabel = document.getElementById("camera-feed-status");
+    const sourceLabel = document.getElementById("camera-source");
     if (!feed || !statusLabel) return;
 
     const setStatus = (text, isError = false) => {
@@ -109,11 +197,17 @@ async function initCameraFeed() {
 
         const camera = await response.json();
         if (!camera.enabled || !camera.url) {
+            if (sourceLabel) {
+                sourceLabel.textContent = "Source unavailable";
+            }
             setStatus(camera.message || "Camera preview unavailable.", true);
             return;
         }
 
         const streamUrl = camera.url;
+        if (sourceLabel) {
+            sourceLabel.textContent = `Source: ${String(camera.source || "camera").toUpperCase()}`;
+        }
         let retryTimer = null;
         feed.onerror = () => {
             setStatus("Camera stream unavailable. Retrying...", true);
@@ -130,65 +224,76 @@ async function initCameraFeed() {
         feed.src = withCacheBust(streamUrl);
     } catch (error) {
         console.error("Failed to initialize camera feed:", error);
+        if (sourceLabel) {
+            sourceLabel.textContent = "Source unavailable";
+        }
         setStatus("Failed to load camera settings.", true);
     }
 }
 
-async function loadInitialData() {
+async function refreshDashboard() {
     try {
-        const latestRes = await fetch("/latest");
+        const [latestRes, alertsRes, statsRes] = await Promise.all([
+            fetch("/latest"),
+            fetch("/alerts?limit=20"),
+            fetch("/stats"),
+        ]);
+
         const latest = await latestRes.json();
-        updateStatus(latest);
-
-        const alertsRes = await fetch("/alerts?limit=20");
         const alerts = await alertsRes.json();
-        updateAlerts(alerts);
-
-        const statsRes = await fetch("/stats");
         const stats = await statsRes.json();
+
+        updateStatus(latest);
+        updateAlerts(alerts);
         updateStats(stats);
     } catch (e) {
-        console.error("Failed to load initial data:", e);
+        console.error("Failed to refresh dashboard:", e);
+        setConnectionState("Backend unavailable", "offline");
     }
 }
 
 function initSocket() {
+    if (!window.io) {
+        setConnectionState("Live via polling", "polling");
+        return;
+    }
+
     socket = io();
 
     socket.on("connect", () => {
-        document.getElementById("connection-dot").classList.add("connected");
-        document.getElementById("connection-text").textContent = "Connected";
+        setConnectionState("Live via websocket", "connected");
     });
 
     socket.on("disconnect", () => {
-        document.getElementById("connection-dot").classList.remove("connected");
-        document.getElementById("connection-text").textContent = "Disconnected";
+        setConnectionState("Websocket disconnected, polling active", "polling");
     });
 
     socket.on("driver_update", (data) => {
         updateStatus(data);
-        fetch("/stats")
-            .then((res) => res.json())
-            .then(updateStats);
-        fetch("/alerts?limit=20")
-            .then((res) => res.json())
-            .then(updateAlerts);
+        refreshDashboard();
     });
+}
+
+function startPolling() {
+    refreshDashboard();
+    if (pollTimer) {
+        clearInterval(pollTimer);
+    }
+    pollTimer = setInterval(refreshDashboard, POLL_INTERVAL_MS);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     initMap();
     initSocket();
     initCameraFeed();
-    loadInitialData();
+    startPolling();
 
     const clearButton = document.getElementById("clear-btn");
     if (clearButton) {
         clearButton.addEventListener("click", async () => {
             if (confirm("Clear all driver data and alerts?")) {
                 await fetch("/clear", { method: "POST" });
-                updateStats({ total_records: 0, drowsy_alerts: 0, yawn_alerts: 0 });
-                updateAlerts([]);
+                refreshDashboard();
             }
         });
     }
